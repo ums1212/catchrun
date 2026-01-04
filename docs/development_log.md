@@ -1,6 +1,48 @@
 # 개발 로그 (Development Log)
 
+> [!NOTE]
+> **로그 작성 가이드**
+> 1. **날짜 형식**: `## YYYY-MM-DD (요일)`
+> 2. **섹션 구분**:
+>    - `### [스프린트명]: [목표]`
+>    - `#### ✅ 주요 작업 및 성과`: 완료된 태스크를 불렛 포인트로 기록
+>    - `#### 📝 비고 / 특이사항`: 이슈, 해결 방법, 결정 사항 등 기술
+>    - `#### 🔗 관련 문서`: 새로 생성되거나 참고한 문서 링크
+> 3. **표기 규칙**: 중요한 파일명, 클래스, 기술 키워드는 백틱(``) 사용
+
+---
+
 ## 2026-01-04 (일)
+
+### 🚀 Sprint 1: 인증 및 프로필 시스템 구축 (Auth & User)
+
+#### ✅ 주요 작업 및 성과
+- **Google 로그인 연동 및 인증 인프라 구축**
+    - `firebase_auth` 및 `google_sign_in` 패키지를 활용한 구글 로그인 기능 구현
+    - `AuthRepository`를 통한 인증 상태(`authStateChanges`) 스트림 노출 및 관리
+- **사용자 프로필 및 데이터 관리 시스템 구현**
+    - Firestore `users` 컬렉션 연동 및 `UserRepository` 구현
+    - `AppUser` 모델을 정의하여 닉네임, 아바타 시드 등 사용자 데이터 직렬화 처리
+    - `NicknameGenerator`를 통한 한국어 기반 랜덤 닉네임 생성 로직 추가
+- **네비게이션 및 상태 기반 리다이렉션 안정화**
+    - `go_router`와 `riverpod`을 결합하여 인증 상태 및 프로필 완성도에 따른 자동 라우팅 구현
+    - `refreshListenable`을 적용하여 비동기 데이터(Auth, Profile) 변화에 즉각 반응하는 라우터 구조 확립
+    - 로그인/온보딩 도중 앱 종료 시에도 마지막 단계를 기억하는 '가입 절차 복구 로직' 적용
+- **에러 핸들링 및 디버깅 도구 강화**
+    - `LoginScreen` 및 `OnboardingScreen`에 에러 시 스낵바 노출 로직 추가
+    - `AuthController` 내 상세 디버그 로그(`print`) 추가로 문제 추적 용이성 확보
+
+#### 📝 비고 / 특이사항
+- **SHA-1 등록 이슈**: 구글 로그인 시 `ApiException: 10` 에러 발생. Firebase 콘솔에 디버그용 SHA-1 지문을 등록하여 해결함.
+- **라우터 리팩토링**: `GoRouter`가 매번 재생성되는 문제를 해결하기 위해 `Provider` 안에서 `refreshListenable`을 사용하는 방식으로 구조를 안정화함.
+- **유령 회원 관리**: 가입 후 프로필 설정을 마치지 않고 방치된 사용자를 위해 Cloud Functions 기반의 자동 삭제 시스템을 설계함.
+
+#### 🔗 관련 문서
+- [implementation_plan.md](file:///C:/Users/voll1/.gemini/antigravity\brain/1cb021c6-df46-4799-9c3c-8636de46b6c1/implementation_plan.md) (Sprint 1 계획)
+- [user_cleanup_design.md](file:///d:/comon/catchrun/docs/user_cleanup_design.md) (유령 회원 삭제 설계서)
+- [walkthrough.md](file:///C:/Users/voll1/.gemini/antigravity\brain/1cb021c6-df46-4799-9c3c-8636de46b6c1/walkthrough.md) (Sprint 1 검증 결과)
+
+
 ### 🚀 Sprint 0: 프로젝트 기반 구축 (Foundation)
 
 #### ✅ 주요 작업 및 성과

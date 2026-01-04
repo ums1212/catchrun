@@ -6,6 +6,7 @@
 - 전적/랭킹/시즌
 - 감옥 위치(GPS/지오펜싱) 강제(현재 MVP는 UI/룰 기반)
 - 치팅 방지 강화(Cloud Functions authoritative server)
+- 장기 미사용(미완성 프로필) 유령 회원 자동 삭제 시스템 (@user_cleanup_design.md)
 
 ## Sprint 0 — 프로젝트 세팅 (Foundation)
 ### 목표(DoD)
