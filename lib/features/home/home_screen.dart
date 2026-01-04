@@ -1,6 +1,7 @@
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -48,8 +49,8 @@ class HomeScreen extends ConsumerWidget {
             children: [
               CircleAvatar(
                 radius: 40,
-                child: const Icon(Icons.person, size: 40),
                 backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                child: const Icon(Icons.person, size: 40),
               ),
               const SizedBox(height: 16),
               Text(
@@ -57,19 +58,32 @@ class HomeScreen extends ConsumerWidget {
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 32),
-              const Text('게임을 시작하거나 대기방에 입장하세요'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: () => context.push('/create-game'),
+                      icon: const Icon(Icons.add),
+                      label: const Text('게임 만들기'),
+                      style: FilledButton.styleFrom(padding: const EdgeInsets.all(16)),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () => context.push('/join-game'),
+                      icon: const Icon(Icons.group_add),
+                      label: const Text('게임 참가하기'),
+                      style: OutlinedButton.styleFrom(padding: const EdgeInsets.all(16)),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, s) => Center(child: Text('에러 발생: $e')),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // Sprint 2에서 구현
-        },
-        label: const Text('게임 만들기'),
-        icon: const Icon(Icons.add),
       ),
     );
   }
