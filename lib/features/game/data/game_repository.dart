@@ -190,6 +190,89 @@ class GameRepository {
             : null);
   }
 
+  // 참가자 역할 업데이트 (방장 권한)
+  Future<void> updateParticipantRole({
+    required String gameId,
+    required String uid,
+    required ParticipantRole role,
+  }) async {
+    await _firestore
+        .collection('games')
+        .doc(gameId)
+        .collection('participants')
+        .doc(uid)
+        .update({
+      'role': role.name,
+    });
+  }
+
+  // 게임 시작
+  Future<void> startGame(String gameId) async {
+    await _firestore.runTransaction((transaction) async {
+      final gameRef = _firestore.collection('games').doc(gameId);
+      final gameDoc = await transaction.get(gameRef);
+      if (!gameDoc.exists) return;
+
+      final gameData = gameDoc.data()!;
+      if (gameData['status'] != 'lobby') return;
+
+      final now = DateTime.now();
+      final durationSec = gameData['durationSec'] ?? 600;
+      final endsAt = now.add(Duration(seconds: durationSec));
+
+      // 1. 게임 상태 업데이트
+      transaction.update(gameRef, {
+        'status': 'playing',
+        'startedAt': FieldValue.serverTimestamp(),
+        'endsAt': Timestamp.fromDate(endsAt),
+      });
+
+      // 2. 시작 이벤트 기록
+      final eventRef = gameRef.collection('events').doc();
+      transaction.set(eventRef, {
+        'type': 'GAME_STARTED',
+        'createdAt': FieldValue.serverTimestamp(),
+        'actorUid': gameData['hostUid'],
+        'audience': 'all',
+        'payload': {
+          'message': '게임이 시작되었습니다! 달리세요!',
+          'durationMs': 3000,
+        },
+      });
+    });
+  }
+
+  // 게임 종료
+  Future<void> finishGame(String gameId) async {
+    await _firestore.runTransaction((transaction) async {
+      final gameRef = _firestore.collection('games').doc(gameId);
+      final gameDoc = await transaction.get(gameRef);
+      if (!gameDoc.exists) return;
+
+      final gameData = gameDoc.data()!;
+      if (gameData['status'] != 'playing') return;
+
+      // 1. 상태 업데이트
+      transaction.update(gameRef, {
+        'status': 'finished',
+        'finishedAt': FieldValue.serverTimestamp(),
+      });
+
+      // 2. 종료 이벤트 기록
+      final eventRef = gameRef.collection('events').doc();
+      transaction.set(eventRef, {
+        'type': 'GAME_ENDED',
+        'createdAt': FieldValue.serverTimestamp(),
+        'actorUid': gameData['hostUid'],
+        'audience': 'all',
+        'payload': {
+          'message': '게임이 종료되었습니다! 결과를 확인하세요.',
+          'durationMs': 3000,
+        },
+      });
+    });
+  }
+
   // 게임 나가기
   Future<void> leaveGame({
     required String gameId,

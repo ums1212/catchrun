@@ -1,7 +1,9 @@
+import 'package:catchrun/core/models/participant_model.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -100,7 +102,18 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
           }
 
           final game = gameSnapshot.data;
-          if (game == null || game.status == GameStatus.finished) {
+          if (game == null) {
+            return const Scaffold(body: Center(child: Text('게임을 찾을 수 없습니다.')));
+          }
+
+          if (game.status == GameStatus.playing) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) context.go('/play/${game.id}');
+            });
+            return const Scaffold(body: Center(child: Text('게임이 시작되었습니다!')));
+          }
+
+          if (game.status == GameStatus.finished) {
             // 게임이 삭제되었거나 방장이 나가서 종료된 경우
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted && !_isExiting) {
@@ -183,38 +196,85 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                               itemCount: participants.length,
                               itemBuilder: (context, index) {
                                 final p = participants[index];
+                                final isCurrentUser = p.uid == currentUser?.uid;
+                                final isHost = p.uid == game.hostUid;
+                                final isRoomHost = game.hostUid == currentUser?.uid;
+
                                 return ListTile(
-                                  leading: CircleAvatar(child: Text(p.nicknameSnapshot[0])),
-                                  title: Text(p.nicknameSnapshot),
+                                  leading: CircleAvatar(
+                                    backgroundColor: p.role == ParticipantRole.cop 
+                                        ? Colors.blue[100] 
+                                        : Colors.red[100],
+                                    child: Text(
+                                      p.role == ParticipantRole.cop ? '👮' : '🏃',
+                                      style: const TextStyle(fontSize: 20),
+                                    ),
+                                  ),
+                                  title: Row(
+                                    children: [
+                                      Text(p.nicknameSnapshot),
+                                    ],
+                                  ),
+                                  subtitle: Text(
+                                    p.role == ParticipantRole.cop ? '경찰' : '도둑',
+                                    style: TextStyle(
+                                      color: p.role == ParticipantRole.cop ? Colors.blue : Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  onTap: isRoomHost ? () => _showRoleChangeBottomSheet(context, game, p) : null,
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      if (p.uid == currentUser?.uid) const Chip(label: Text('나')),
-                                      if (p.uid == game.hostUid) const Icon(Icons.star, color: Colors.amber),
+                                      if (isCurrentUser) const Chip(label: Text('나')),
+                                      if (isHost) const Icon(Icons.star, color: Colors.amber),
                                     ],
                                   ),
                                 );
                               },
                             ),
                           ),
+                          Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: game.hostUid == currentUser?.uid
+                                ? FilledButton(
+                                    onPressed: () async {
+                                      final currentCops = participants.where((p) => p.role == ParticipantRole.cop).length;
+                                      if (currentCops != game.rule.copsCount) {
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('인원 설정 오류'),
+                                            content: Text('설정된 경찰 인원(${game.rule.copsCount}명)과 현재 배정된 경찰 수(${currentCops}명)가 일치하지 않습니다.\n현장에서 역할을 조율해주세요.'),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context),
+                                                child: const Text('확인'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        return;
+                                      }
+
+                                      try {
+                                        await ref.read(gameRepositoryProvider).startGame(game.id);
+                                      } catch (e) {
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text('게임 시작 실패: $e')),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                                    child: const Text('게임 시작'),
+                                  )
+                                : const Center(child: Text('방장이 게임을 시작하기를 기다리는 중...')),
+                          ),
                         ],
                       );
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Consumer(
-                      builder: (context, ref, child) {
-                        final currentUser = ref.watch(userProvider).value;
-                        if (game.hostUid == currentUser?.uid) {
-                          return FilledButton(
-                            onPressed: () {},
-                            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-                            child: const Text('게임 시작'),
-                          );
-                        }
-                        return const Text('방장이 게임을 시작하기를 기다리는 중...');
                       },
                     ),
                   ),
@@ -224,6 +284,50 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
           );
         },
       ),
+    );
+  }
+
+  void _showRoleChangeBottomSheet(BuildContext context, GameModel game, ParticipantModel p) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text('${p.nicknameSnapshot} 역할 설정'),
+                subtitle: const Text('방장 권한으로 역할을 강제 배정합니다.'),
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Text('👮', style: TextStyle(fontSize: 24)),
+                title: const Text('경찰로 변경'),
+                onTap: () {
+                  ref.read(gameRepositoryProvider).updateParticipantRole(
+                    gameId: game.id,
+                    uid: p.uid,
+                    role: ParticipantRole.cop,
+                  );
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Text('🏃', style: TextStyle(fontSize: 24)),
+                title: const Text('도둑으로 변경'),
+                onTap: () {
+                  ref.read(gameRepositoryProvider).updateParticipantRole(
+                    gameId: game.id,
+                    uid: p.uid,
+                    role: ParticipantRole.robber,
+                  );
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

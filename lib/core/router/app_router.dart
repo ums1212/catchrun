@@ -7,6 +7,7 @@ import 'package:catchrun/features/splash/splash_screen.dart';
 import 'package:catchrun/features/game/presentation/create_game_screen.dart';
 import 'package:catchrun/features/game/presentation/join_game_screen.dart';
 import 'package:catchrun/features/game/presentation/lobby_screen.dart';
+import 'package:catchrun/features/game/presentation/play_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -44,6 +45,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final gameId = state.pathParameters['gameId']!;
           return LobbyScreen(gameId: gameId);
+        },
+      ),
+      GoRoute(
+        path: '/play/:gameId',
+        builder: (context, state) {
+          final gameId = state.pathParameters['gameId']!;
+          return PlayScreen(gameId: gameId);
         },
       ),
     ],

@@ -12,6 +12,33 @@
 
 ---
 
+## 2026-01-05 (월)
+
+### 🚀 Sprint 3: 역할 배정 및 게임 프로세스 완성 (Role Assignment & Game Flow)
+
+#### ✅ 주요 작업 및 성과
+- **역할 관리 시스템 고도화 및 단순화**
+    - 현장 합의를 우선시하는 정책에 따라 '경찰 지원' 및 '자동 역할 배정(Shuffle)' 기능을 제거하고 방장 직접 지정 방식으로 전환
+    - `LobbyScreen`: 참가자 목록에 역할 아이콘(👮 경찰, 🏃 도둑) 및 방장 표시(⭐)를 통해 직관적인 역할 시각화 제공
+    - `RoleChangeBottomSheet`: 방장이 참가자를 클릭하여 역할을 즉시 변경할 수 있는 관리 UI 구현
+- **게임 시작 전 데이터 정밀 검증**
+    - '게임 시작' 버튼 클릭 시 현재 배정된 경찰 수와 방 설정(`copsCount`)의 일치 여부를 확인하는 유효성 검사 로직 추가
+    - 조건 미충족 시 안내 다이얼로그를 통해 현장 조율을 유도하여 게임 규칙 위반 방지
+- **플레이 화면(PlayScreen) 및 실시간 타이머 구현**
+    - `/play/:gameId` 경로를 통한 플레이 화면 진입 및 역할별 테마(경찰: 파랑, 도둑: 빨강) 동적 적용
+    - Firestore의 `endsAt` 타임스탬프를 기반으로 한 오차 없는 실시간 카운트다운 타이머 구현
+    - 전체 도둑, 수감된 도둑, 탈출 중인 도둑 수를 한눈에 볼 수 있는 게임 상태 대시보드 구축
+- **자동 게임 종료 및 결과 처리 인프라**
+    - 실시간 데이터 감지를 통한 게임 종료 조건 구현 (제한 시간 만료 또는 모든 도둑 수감 시 종료)
+    - 종료 시 `status=finished` 업데이트 및 `GAME_ENDED` 이벤트 기록 연동
+    - 현재 결과 화면 부재로 인한 임시 홈 화면 리다이렉션 처리
+
+#### 📝 비고 / 특이사항
+- **정책 변경**: 사용자 피드백을 반영하여 복잡한 알고리즘(wantsCop, roleLock)보다는 직관적인 방장 제어 방식으로 로직을 단순화하여 사용성을 개선함.
+- **빌드 및 스코프 관리**: `ListView.builder` 내부의 변수 스코프 문제와 `go_router` 임포트 누락으로 발생했던 빌드 에러를 수정하여 안정성을 확보함.
+
+---
+
 ## 2026-01-04 (일)
 
 ### 🚀 Sprint 2: 게임 로비 및 데이터 인프라 구축 (Game Lobby & Infrastructure)
@@ -38,7 +65,7 @@
 - **Android 시스템 UI 대응 및 가이드 수립**
     - 안드로이드 15 에지 투 에지(Edge-to-Edge) 지원을 위해 시스템 바 투명화 작업 수행
     - 주요 화면에 `SafeArea`를 적용하여 물리/소프트웨어 네비게이션 바가 UI를 가리는 문제 해결
-    - 향후 개발을 위한 [ui_guide.md](file:///d:/comon/catchrun/docs/ui_guide.md) 가이드 라인 자산화
+    - 향후 개발을 위한 `docs/ui_guide.md` 가이드 라인 자산화
 
 #### 📝 비고 / 특이사항
 - **QR 데이터 규격**: `catchrun:gameId:qrToken` 형식을 도입하여 타 앱의 QR 스캔과 구분하고 보안성을 확보함.
@@ -46,9 +73,9 @@
 - **디자인 철학 반영**: 전역 `SafeArea` 대신 각 화면(`Scaffold.body`)에서 개별 제어하여 디자인적 몰입감(Bleeding 효과)을 유지함.
 
 #### 🔗 관련 문서
-- [implementation_plan.md](file:///C:/Users/voll1/.gemini/antigravity\brain/34d87fcb-0a8b-4976-bd25-bc1202112fb2/implementation_plan.md) (Sprint 2 계획)
-- [walkthrough.md](file:///C:/Users/voll1/.gemini/antigravity\brain/34d87fcb-0a8b-4976-bd25-bc1202112fb2/walkthrough.md) (Sprint 2 검증 결과)
-- [ui_guide.md](file:///d:/comon/catchrun/docs/ui_guide.md) (시스템 UI 대응 가이드)
+- [ui_guide.md](docs/ui_guide.md)
+
+---
 
 
 ### 🚀 Sprint 1: 인증 및 프로필 시스템 구축 (Auth & User)
@@ -75,9 +102,9 @@
 - **유령 회원 관리**: 가입 후 프로필 설정을 마치지 않고 방치된 사용자를 위해 Cloud Functions 기반의 자동 삭제 시스템을 설계함.
 
 #### 🔗 관련 문서
-- [implementation_plan.md](file:///C:/Users/voll1/.gemini/antigravity\brain/1cb021c6-df46-4799-9c3c-8636de46b6c1/implementation_plan.md) (Sprint 1 계획)
-- [user_cleanup_design.md](file:///d:/comon/catchrun/docs/user_cleanup_design.md) (유령 회원 삭제 설계서)
-- [walkthrough.md](file:///C:/Users/voll1/.gemini/antigravity\brain/1cb021c6-df46-4799-9c3c-8636de46b6c1/walkthrough.md) (Sprint 1 검증 결과)
+- [user_cleanup_design.md](docs/user_cleanup_design.md)
+
+---
 
 
 ### 🚀 Sprint 0: 프로젝트 기반 구축 (Foundation)
@@ -85,7 +112,7 @@
 #### ✅ 주요 작업 및 성과
 - **프로젝트 초기화 및 형상 관리 설정**
     - Flutter 프로젝트 생성 및 패키지명/번들ID(`com.comon.catchrun`) 확정
-    - 원격 저장소 연결 및 Git 브랜치 전략(`main`, `dev`, `feat/*`, `fix/*`) 수립 (`git_strategy.md`)
+    - 원격 저장소 연결 및 Git 브랜치 전략(`main`, `dev`, `feat/*`, `fix/*`) 수립 (`docs/git_strategy.md`)
 - **Firebase 연동 및 환경 최적화**
     - Firebase 프로젝트 생성 및 iOS/Android 앱 연동 (GoogleService-Info.plist, google-services.json)
     - `firebase_analytics` 등 플러그인 호환성을 위한 `minSdkVersion` 업데이트 (19 -> 23)
@@ -93,7 +120,7 @@
     - `go_router`를 활용한 기본 라우팅 설정 (`/splash`, `/login`, `/onboarding`, `/home`)
     - Material 3 기반 공통 테마 및 버튼/카드와 같은 핵심 UI 컴포넌트 스켈레톤 구현
 - **문서화 및 태스크 관리**
-    - 화면 정의서(`screenspecification.md`) 및 태스크 보드(`task_board.md`) 작성
+    - 화면 정의서(`docs/screenspecification.md`) 및 태스크 보드(`docs/task_board.md`) 작성
     - 스프린트 단계별 목표 및 DoD(Definition of Done) 정의
 
 #### 📝 비고 / 특이사항
