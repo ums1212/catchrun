@@ -47,11 +47,11 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
             host: user,
           );
 
-      if (mounted) {
+      if (context.mounted) {
         context.pushReplacement('/lobby/$gameId');
       }
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('게임 생성 중 오류 발생: $e')),
         );
@@ -80,7 +80,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                   decoration: InputDecoration(
                     labelText: '게임 이름',
                     hintText: '우리동네 한판!',
-                    hintStyle: TextStyle(color: Theme.of(context).hintColor.withOpacity(0.4)),
+                    hintStyle: TextStyle(color: Theme.of(context).hintColor.withValues(alpha: 0.4)),
                     border: const OutlineInputBorder(),
                   ),
                   validator: (value) => 

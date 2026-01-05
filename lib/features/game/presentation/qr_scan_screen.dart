@@ -80,21 +80,21 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
         _showSuccess('구출 성공!');
       }
       
-      if (mounted) context.pop();
+      if (context.mounted) context.pop();
     } catch (e) {
       _showError('처리 중 오류가 발생했습니다: $e');
     }
   }
 
   void _showError(String message) {
-    if (!mounted) return;
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
   void _showSuccess(String message) {
-    if (!mounted) return;
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.green),
     );

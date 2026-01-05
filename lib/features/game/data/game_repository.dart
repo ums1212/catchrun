@@ -40,6 +40,9 @@ class GameRepository {
         robbersFree: 0, // 게임 시작 전에는 0
         robbersJailed: 0,
       ),
+      keyItem: GameKeyItem(
+        nfcKeyId: _generateRandomCode(9),
+      ),
     );
 
     final hostParticipant = ParticipantModel(
@@ -346,8 +349,8 @@ class GameRepository {
         'actorUid': uid,
         'audience': 'all',
         'payload': {
-          'nickname': (participantDoc.data() as Map<String, dynamic>?)?['nicknameSnapshot'] ?? '익명',
-          'message': '${(participantDoc.data() as Map<String, dynamic>?)?['nicknameSnapshot'] ?? '익명'}님이 퇴장했습니다.',
+          'nickname': (participantDoc.data())?['nicknameSnapshot'] ?? '익명',
+          'message': '${(participantDoc.data())?['nicknameSnapshot'] ?? '익명'}님이 퇴장했습니다.',
         },
       });
 
@@ -409,8 +412,8 @@ class GameRepository {
 
       // 4. 상세 CAUGHT 이벤트 기록
       final eventRef = gameRef.collection('events').doc();
-      final copNickname = (copDoc.data() as Map<String, dynamic>?)?['nicknameSnapshot'] ?? '경찰';
-      final robberNickname = (robberDoc.data() as Map<String, dynamic>?)?['nicknameSnapshot'] ?? '도둑';
+      final copNickname = (copDoc.data())?['nicknameSnapshot'] ?? '경찰';
+      final robberNickname = (robberDoc.data())?['nicknameSnapshot'] ?? '도둑';
 
       transaction.set(eventRef, {
         'type': 'CAUGHT',
@@ -449,6 +452,12 @@ class GameRepository {
 
       if (jailedData.state != RobberState.jailed) return; // 이미 자유 상태
 
+      // 구출 제한 체크 (열쇠 사용 후 5분간)
+      if (rescuerData.rescueDisabledUntil != null && 
+          rescuerData.rescueDisabledUntil!.isAfter(DateTime.now())) {
+        throw Exception('열쇠 사용 후에는 잠시 동안 다른 도둑을 구출할 수 없습니다.');
+      }
+
       // 1. 도둑 상태 업데이트
       transaction.update(jailedRef, {
         'state': RobberState.free.name,
@@ -471,8 +480,8 @@ class GameRepository {
 
       // 4. 상세 RESCUED 이벤트 기록
       final eventRef = gameRef.collection('events').doc();
-      final rescuerNickname = (rescuerDoc.data() as Map<String, dynamic>?)?['nicknameSnapshot'] ?? '도둑';
-      final jailedNickname = (jailedDoc.data() as Map<String, dynamic>?)?['nicknameSnapshot'] ?? '도둑';
+      final rescuerNickname = (rescuerDoc.data())?['nicknameSnapshot'] ?? '도둑';
+      final jailedNickname = (jailedDoc.data())?['nicknameSnapshot'] ?? '도둑';
 
       transaction.set(eventRef, {
         'type': 'RESCUED',
@@ -486,6 +495,87 @@ class GameRepository {
           'message': '도둑 $rescuerNickname님이 $jailedNickname님을 구출했습니다!',
         },
       });
+    });
+  }
+
+  // NFC 열쇠 사용하기
+  Future<void> usePrisonKey({
+    required String gameId,
+    required String uid,
+    required String scannedId,
+  }) async {
+    await _firestore.runTransaction((transaction) async {
+      final gameRef = _firestore.collection('games').doc(gameId);
+      final participantRef = gameRef.collection('participants').doc(uid);
+
+      final gameDoc = await transaction.get(gameRef);
+      final participantDoc = await transaction.get(participantRef);
+
+      if (!gameDoc.exists || !participantDoc.exists) return;
+
+      final game = GameModel.fromMap(gameDoc.data()!, gameId);
+      final participant = ParticipantModel.fromMap(participantDoc.data()!, uid);
+
+      if (participant.state != RobberState.jailed) return;
+      if (game.keyItem.usedByUid != null) {
+        throw Exception('이미 사용된 열쇠입니다.');
+      }
+      if (game.keyItem.nfcKeyId != scannedId) {
+        throw Exception('유효하지 않은 열쇠입니다.');
+      }
+
+      final now = DateTime.now();
+      final rescueDisabledUntil = now.add(const Duration(minutes: 5));
+
+      // 1. 도둑 상태 업데이트 (자유 상태 + 구출 제한)
+      transaction.update(participantRef, {
+        'state': RobberState.free.name,
+        'releasedAt': FieldValue.serverTimestamp(),
+        'rescueDisabledUntil': Timestamp.fromDate(rescueDisabledUntil),
+        'stats.keyUsed': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // 2. 게임 상태 업데이트 (열쇠 사용 기록 + 카운트)
+      transaction.update(gameRef, {
+        'keyItem.usedByUid': uid,
+        'keyItem.usedAt': FieldValue.serverTimestamp(),
+        'counts.robbersFree': FieldValue.increment(1),
+        'counts.robbersJailed': FieldValue.increment(-1),
+      });
+
+      // 3. KEY_USED 이벤트 기록 (경찰 등에게 알림)
+      final eventRef = gameRef.collection('events').doc();
+      final nickname = (participantDoc.data())?['nicknameSnapshot'] ?? '도둑';
+
+      transaction.set(eventRef, {
+        'type': 'KEY_USED',
+        'createdAt': FieldValue.serverTimestamp(),
+        'actorUid': uid,
+        'audience': 'all',
+        'payload': {
+          'actorNickname': nickname,
+          'message': '열쇠 사용됨! 도둑 $nickname님이 탈출했습니다!',
+          'durationMs': 3000,
+        },
+      });
+    });
+  }
+
+  // 실시간 이벤트 감시 (팝업용)
+  Stream<Map<String, dynamic>?> watchLatestEvent(String gameId) {
+    return _firestore
+        .collection('games')
+        .doc(gameId)
+        .collection('events')
+        .orderBy('createdAt', descending: true)
+        .limit(1)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.docs.isEmpty) return null;
+      final data = snapshot.docs.first.data();
+      data['id'] = snapshot.docs.first.id;
+      return data;
     });
   }
 

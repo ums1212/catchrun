@@ -38,6 +38,7 @@ class ParticipantModel {
   final DateTime? releasedAt;
   final int score;
   final ParticipantStats stats;
+  final DateTime? rescueDisabledUntil;
 
   ParticipantModel({
     required this.uid,
@@ -51,6 +52,7 @@ class ParticipantModel {
     this.state = RobberState.free,
     this.jailedAt,
     this.releasedAt,
+    this.rescueDisabledUntil,
     this.score = 0,
     required this.stats,
   });
@@ -68,6 +70,7 @@ class ParticipantModel {
       'state': state.name,
       'jailedAt': jailedAt != null ? Timestamp.fromDate(jailedAt!) : null,
       'releasedAt': releasedAt != null ? Timestamp.fromDate(releasedAt!) : null,
+      'rescueDisabledUntil': rescueDisabledUntil != null ? Timestamp.fromDate(rescueDisabledUntil!) : null,
       'score': score,
       'stats': stats.toMap(),
       'updatedAt': FieldValue.serverTimestamp(),
@@ -87,6 +90,7 @@ class ParticipantModel {
       state: RobberState.fromString(map['state'] ?? 'free'),
       jailedAt: (map['jailedAt'] as Timestamp?)?.toDate(),
       releasedAt: (map['releasedAt'] as Timestamp?)?.toDate(),
+      rescueDisabledUntil: (map['rescueDisabledUntil'] as Timestamp?)?.toDate(),
       score: map['score'] ?? 0,
       stats: ParticipantStats.fromMap(map['stats'] ?? {}),
     );

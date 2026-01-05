@@ -12,6 +12,30 @@
 
 ---
 
+## 2026-01-06 (화)
+
+### 🚀 Sprint 5: NFC 감옥 열쇠 및 실시간 이벤트 알림 (NFC Prison Key & Event Popups)
+
+#### ✅ 주요 작업 및 성과
+- **NFC 기반 감옥 열쇠 시스템 구현**
+    - **NFC 기록(Write)**: `LobbyScreen`에서 방장이 빈 NFC 카드에 고유한 `nfcKeyId`를 NDEF 형식으로 기록하는 기능 구현
+    - **NFC 사용(Read)**: `PrisonScreen`에서 수감된 도둑이 기록된 카드를 접촉하여 즉시 탈출(free 상태 전환)하는 프로세스 구축
+    - **보안 및 제약**: 열쇠 사용 시 5분간 타인 구출 불가 제약(`rescueDisabledUntil`) 및 트랜잭션 계층의 데이터 무결성 검증 적용
+    - **UX 개선**: NFC 미지원/비활성화 시 안내 다이얼로그 제공 및 시스템 설정 연결 로직 추가
+- **실시간 게임 이벤트 알림 시스템(Event Popups) 도입**
+    - `PlayScreen`에서 Firestore `events` 컬렉션을 실시간 구독하여 게임 내 주요 변화 감지
+    - `EventPopupOverlay`: 체포, 구출, 열쇠 사용 이벤트를 애니메이션과 함께 화면 중앙에 시각화하여 강조
+    - 중복 노출 방지를 위한 `eventId` 캐싱 로직 적용
+- **Android 빌드 시스템 안정화 및 패키지 마이그레이션**
+    - **Kotlin 2.1.0 / Gradle 8.9 / AGP 8.7.3** 기반의 최신 빌드 환경 구축 및 증분 빌드 오류 조치
+    - `nfc_manager` 4.x 및 `ndef_record` 모듈화에 따른 대대적인 API 마이그레이션 수행
+
+#### 📝 비고 / 특이사항
+- **API 대응**: `nfc_manager` v4의 파괴적 변경사항(명명된 파라미터 필수화 등)을 전수 반영하고, 유실된 `createText` 기능을 커스텀 헬퍼로 대체함.
+- **향후 계획**: NFC 태그 시 앱 자동 실행(AAR) 및 딥링크를 통한 마켓 이동 기능 추가 예정.
+
+---
+
 ## 2026-01-05 (월)
 
 ### 🚀 Sprint 4: QR 판정 시스템 및 감옥 화면 구현 (QR Catch/Rescue & Prison Screen)

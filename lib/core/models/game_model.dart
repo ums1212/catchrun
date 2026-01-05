@@ -28,6 +28,7 @@ class GameModel {
   final int durationSec;
   final GameRule rule;
   final GameCounts counts;
+  final GameKeyItem keyItem;
 
   GameModel({
     required this.id,
@@ -44,6 +45,7 @@ class GameModel {
     this.durationSec = 600,
     required this.rule,
     required this.counts,
+    required this.keyItem,
   });
 
   Map<String, dynamic> toMap() {
@@ -61,6 +63,7 @@ class GameModel {
       'durationSec': durationSec,
       'rule': rule.toMap(),
       'counts': counts.toMap(),
+      'keyItem': keyItem.toMap(),
     };
   }
 
@@ -80,6 +83,35 @@ class GameModel {
       durationSec: map['durationSec'] ?? 600,
       rule: GameRule.fromMap(map['rule'] ?? {}),
       counts: GameCounts.fromMap(map['counts'] ?? {}),
+      keyItem: GameKeyItem.fromMap(map['keyItem'] ?? {}),
+    );
+  }
+}
+
+class GameKeyItem {
+  final String nfcKeyId; // 랜덤 생성된 9자리 숫자
+  final String? usedByUid;
+  final DateTime? usedAt;
+
+  GameKeyItem({
+    required this.nfcKeyId,
+    this.usedByUid,
+    this.usedAt,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'nfcKeyId': nfcKeyId,
+      'usedByUid': usedByUid,
+      'usedAt': usedAt != null ? Timestamp.fromDate(usedAt!) : null,
+    };
+  }
+
+  factory GameKeyItem.fromMap(Map<String, dynamic> map) {
+    return GameKeyItem(
+      nfcKeyId: map['nfcKeyId'] ?? '',
+      usedByUid: map['usedByUid'],
+      usedAt: (map['usedAt'] as Timestamp?)?.toDate(),
     );
   }
 }

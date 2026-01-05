@@ -77,7 +77,7 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> {
       final rationale = await Permission.camera.shouldShowRequestRationale;
       debugPrint('DEBUG: Post-request Rationale: $rationale');
       
-      if (!rationale) {
+      if (!rationale && context.mounted) {
         _showPermissionDialog();
       }
     }
@@ -102,9 +102,9 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> {
             child: const Text('취소'),
           ),
           TextButton(
-            onPressed: () {
-              openAppSettings();
-              Navigator.pop(context);
+            onPressed: () async {
+              await openAppSettings();
+              if (context.mounted) Navigator.pop(context);
             },
             child: const Text('설정으로 이동'),
           ),
@@ -136,7 +136,7 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> {
               ));
           return;
         } else {
-          if (mounted) {
+          if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('유효하지 않은 QR 코드 형식입니다.')),
             );
@@ -157,11 +157,11 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> {
       if (user == null) throw Exception('사용자 정보를 찾을 수 없습니다.');
 
       final gameId = await joinAction();
-      if (mounted) {
+      if (context.mounted) {
         context.pushReplacement('/lobby/$gameId');
       }
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('참가 중 오류 발생: $e')),
         );

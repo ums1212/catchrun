@@ -6,6 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:nfc_manager/nfc_manager.dart';
+import 'package:ndef_record/ndef_record.dart';
+import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
+import 'package:app_settings/app_settings.dart';
+import 'dart:typed_data';
+import 'dart:convert';
 
 import '../../../core/models/game_model.dart';
 
@@ -52,7 +58,12 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
         '🔑 초대 코드: ${game.inviteCode}\n\n'
         '앱을 실행하고 코드 입력 또는 QR 스캔으로 참가하세요!';
     
-    await Share.share(message, subject: '${game.title} 게임 초대');
+    await SharePlus.instance.share(
+      ShareParams(
+        text: message,
+        subject: '${game.title} 게임 초대',
+      ),
+    );
   }
 
   Future<void> _handleExit() async {
@@ -83,6 +94,101 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
     }
   }
 
+  Future<void> _registerNfcKey(GameModel game) async {
+    bool isAvailable = await NfcManager.instance.isAvailable();
+    if (!isAvailable) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('NFC 기능 비활성화'),
+            content: const Text('NFC 기능이 꺼져 있거나 지원되지 않는 기기입니다. 설정에서 NFC를 활성화해 주세요.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  await AppSettings.openAppSettings(type: AppSettingsType.nfc);
+                  if (context.mounted) Navigator.pop(context);
+                },
+                child: const Text('설정으로 이동'),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('NFC 열쇠 등록'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.nfc, size: 64, color: Colors.blue),
+            SizedBox(height: 16),
+            Text('빈 NFC 카드를 기기 뒷면에 접촉해 주세요.'),
+            SizedBox(height: 8),
+            Text('이 게임의 전용 열쇠 ID가 기록됩니다.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              NfcManager.instance.stopSession();
+              Navigator.pop(context);
+            },
+            child: const Text('취소'),
+          ),
+        ],
+      ),
+    );
+
+    NfcManager.instance.startSession(
+      pollingOptions: {
+        NfcPollingOption.iso14443,
+        NfcPollingOption.iso15693,
+        NfcPollingOption.iso18092,
+      },
+      onDiscovered: (NfcTag tag) async {
+        try {
+          final ndef = Ndef.from(tag);
+          if (ndef == null || !ndef.isWritable) {
+            throw Exception('기록할 수 없는 태그입니다.');
+          }
+
+          final message = NdefMessage(records: [
+            _createNdefTextRecord(game.keyItem.nfcKeyId),
+          ]);
+
+          await ndef.write(message: message);
+          await NfcManager.instance.stopSession();
+        
+        if (mounted) {
+          Navigator.pop(context); // 다이얼로그 닫기
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('NFC 열쇠 등록 성공!')),
+          );
+        }
+      } catch (e) {
+        await NfcManager.instance.stopSession();
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('오류 발생: $e')),
+          );
+        }
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final gameAsync = ref.watch(gameRepositoryProvider).watchGame(widget.gameId);
@@ -90,7 +196,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
 
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         _handleExit();
       },
@@ -246,7 +352,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                                           context: context,
                                           builder: (context) => AlertDialog(
                                             title: const Text('인원 설정 오류'),
-                                            content: Text('설정된 경찰 인원(${game.rule.copsCount}명)과 현재 배정된 경찰 수(${currentCops}명)가 일치하지 않습니다.\n현장에서 역할을 조율해주세요.'),
+                                            content: Text('설정된 경찰 인원(${game.rule.copsCount}명)과 현재 배정된 경찰 수($currentCops명)가 일치하지 않습니다.\n현장에서 역할을 조율해주세요.'),
                                             actions: [
                                               TextButton(
                                                 onPressed: () => Navigator.pop(context),
@@ -261,7 +367,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                                       try {
                                         await ref.read(gameRepositoryProvider).startGame(game.id);
                                       } catch (e) {
-                                        if (mounted) {
+                                        if (context.mounted) {
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(content: Text('게임 시작 실패: $e')),
                                           );
@@ -273,6 +379,17 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                                   )
                                 : const Center(child: Text('방장이 게임을 시작하기를 기다리는 중...')),
                           ),
+                          if (game.hostUid == currentUser?.uid)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                              child: OutlinedButton.icon(
+                                onPressed: () => _registerNfcKey(game),
+                                icon: const Icon(Icons.nfc),
+                                label: const Text('NFC 열쇠 등록 (NDEF 쓰기)'),
+                                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                              ),
+                            ),
+                          const SizedBox(height: 16),
                         ],
                       );
                       },
@@ -303,31 +420,46 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
               ListTile(
                 leading: const Text('👮', style: TextStyle(fontSize: 24)),
                 title: const Text('경찰로 변경'),
-                onTap: () {
-                  ref.read(gameRepositoryProvider).updateParticipantRole(
+                onTap: () async {
+                  await ref.read(gameRepositoryProvider).updateParticipantRole(
                     gameId: game.id,
                     uid: p.uid,
                     role: ParticipantRole.cop,
                   );
-                  Navigator.pop(context);
+                  if (context.mounted) Navigator.pop(context);
                 },
               ),
               ListTile(
                 leading: const Text('🏃', style: TextStyle(fontSize: 24)),
                 title: const Text('도둑으로 변경'),
-                onTap: () {
-                  ref.read(gameRepositoryProvider).updateParticipantRole(
+                onTap: () async {
+                  await ref.read(gameRepositoryProvider).updateParticipantRole(
                     gameId: game.id,
                     uid: p.uid,
                     role: ParticipantRole.robber,
                   );
-                  Navigator.pop(context);
+                  if (context.mounted) Navigator.pop(context);
                 },
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  NdefRecord _createNdefTextRecord(String text) {
+    const languageCode = 'en';
+    final payload = Uint8List.fromList([
+      languageCode.length,
+      ...utf8.encode(languageCode),
+      ...utf8.encode(text),
+    ]);
+    return NdefRecord(
+      typeNameFormat: TypeNameFormat.wellKnown,
+      type: Uint8List.fromList(utf8.encode('T')),
+      identifier: Uint8List(0),
+      payload: payload,
     );
   }
 }

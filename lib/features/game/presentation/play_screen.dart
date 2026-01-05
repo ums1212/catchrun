@@ -7,6 +7,7 @@ import 'package:catchrun/core/models/participant_model.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:catchrun/features/game/presentation/widgets/event_popup_overlay.dart';
 
 class PlayScreen extends ConsumerStatefulWidget {
   final String gameId;
@@ -19,6 +20,8 @@ class PlayScreen extends ConsumerStatefulWidget {
 class _PlayScreenState extends ConsumerState<PlayScreen> {
   Timer? _timer;
   Duration _remainingTime = Duration.zero;
+  Map<String, dynamic>? _lastEvent;
+  String? _lastEventId;
 
   @override
   void initState() {
@@ -78,6 +81,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
   Widget build(BuildContext context) {
     final gameAsync = ref.watch(gameRepositoryProvider).watchGame(widget.gameId);
     final participantsAsync = ref.watch(gameRepositoryProvider).watchParticipants(widget.gameId);
+    final eventAsync = ref.watch(gameRepositoryProvider).watchLatestEvent(widget.gameId);
     final currentUser = ref.watch(userProvider).value;
 
     return StreamBuilder<GameModel?>(
@@ -91,7 +95,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
         
         if (game.status == GameStatus.finished) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
+            if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('게임이 종료되었습니다!')),
               );
@@ -131,7 +135,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
             }
 
             return Scaffold(
-              backgroundColor: themeColor.withOpacity(0.05),
+              backgroundColor: themeColor.withValues(alpha: 0.05),
               appBar: AppBar(
                 backgroundColor: themeColor,
                 foregroundColor: Colors.white,
@@ -139,118 +143,142 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
                 centerTitle: true,
                 automaticallyImplyLeading: false,
               ),
-              body: Column(
+              body: Stack(
                 children: [
-                  // 상단 타이머 섹션
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 32),
-                    decoration: BoxDecoration(
-                      color: themeColor,
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(32),
-                        bottomRight: Radius.circular(32),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text(
-                          '남은 시간',
-                          style: TextStyle(color: Colors.white70, fontSize: 16),
-                        ),
-                        Text(
-                          _formatDuration(_remainingTime),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 64,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'monospace',
+                  Column(
+                    children: [
+                      // 상단 타이머 섹션
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 32),
+                        decoration: BoxDecoration(
+                          color: themeColor,
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(32),
+                            bottomRight: Radius.circular(32),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // 게임 상태 카드
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 21),
-                    child: Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        child: Column(
                           children: [
-                            _buildStatItem('전체 도둑', '${game.counts.robbers}'),
-                            _buildStatItem('수감됨', '${game.counts.robbersJailed}', color: Colors.red),
-                            _buildStatItem('탈출 중', '${game.counts.robbersFree}', color: Colors.green),
+                            const Text(
+                              '남은 시간',
+                              style: TextStyle(color: Colors.white70, fontSize: 16),
+                            ),
+                            Text(
+                              _formatDuration(_remainingTime),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 64,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                    ),
-                  ),
-                  
-                  const Spacer(),
-                  
-                  // 액션 버튼
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Row(
-                      children: [
-                        if (!isCop) ...[
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () => _showMyQr(context, currentUser?.uid),
-                              icon: const Icon(Icons.qr_code, color: Colors.white),
-                              label: const Text('내 QR 코드'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orange,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                        ],
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => context.push(
-                              '/qr-scan/${widget.gameId}?isCop=$isCop',
-                            ),
-                            icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
-                            label: Text(isCop ? '도둑 체포 (스캔)' : '동료 구출 (스캔)'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: themeColor,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // 게임 상태 카드
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 21),
+                        child: Card(
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _buildStatItem('전체 도둑', '${game.counts.robbers}'),
+                                _buildStatItem('수감됨', '${game.counts.robbersJailed}', color: Colors.red),
+                                _buildStatItem('탈출 중', '${game.counts.robbersFree}', color: Colors.green),
+                              ],
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // 역할별 안내 문구
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 48, left: 32, right: 32),
-                    child: Text(
-                      isCop 
-                        ? '도둑을 잡고 QR 코드를 스캔하세요!' 
-                        : '경찰을 피해 생존하세요! 감옥에 있는 동료를 구출할 수도 있습니다.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: themeColor.withOpacity(0.8),
                       ),
-                    ),
+                      
+                      const Spacer(),
+                      
+                      // 액션 버튼
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Row(
+                          children: [
+                            if (!isCop) ...[
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _showMyQr(context, currentUser?.uid),
+                                  icon: const Icon(Icons.qr_code, color: Colors.white),
+                                  label: const Text('내 QR 코드'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                            ],
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => context.push(
+                                  '/qr-scan/${widget.gameId}?isCop=$isCop',
+                                ),
+                                icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
+                                label: Text(isCop ? '도둑 체포 (스캔)' : '동료 구출 (스캔)'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: themeColor,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // 역할별 안내 문구
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 48, left: 32, right: 32),
+                        child: Text(
+                          isCop 
+                            ? '도둑을 잡고 QR 코드를 스캔하세요!' 
+                            : '경찰을 피해 생존하세요! 감옥에 있는 동료를 구출할 수도 있습니다.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: themeColor.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  // 이벤트 팝업 오버레이
+                  StreamBuilder<Map<String, dynamic>?>(
+                    stream: eventAsync,
+                    builder: (context, eventSnapshot) {
+                      final event = eventSnapshot.data;
+                      if (event != null && event['id'] != _lastEventId) {
+                        _lastEvent = event;
+                        _lastEventId = event['id'];
+                      }
+                      
+                      return EventPopupOverlay(
+                        event: _lastEvent,
+                        onDismiss: () {
+                          setState(() {
+                            _lastEvent = null;
+                          });
+                        },
+                      );
+                    },
                   ),
                 ],
               ),
