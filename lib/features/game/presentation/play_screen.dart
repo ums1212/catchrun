@@ -6,6 +6,7 @@ import 'package:catchrun/core/models/game_model.dart';
 import 'package:catchrun/core/models/participant_model.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class PlayScreen extends ConsumerStatefulWidget {
   final String gameId;
@@ -55,8 +56,11 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
         return;
       }
 
-      // 2. 도둑 전원 수감 체크
-      if (game.counts.robbers > 0 && game.counts.robbersFree == 0) {
+      // 2. 도둑 전원 수감 체크 (게임 시작 직후 동기화 지연 대비하여 startedAt 이후에만 체크)
+      if (game.startedAt != null && 
+          DateTime.now().difference(game.startedAt!).inSeconds > 2 && 
+          game.counts.robbers > 0 && 
+          game.counts.robbersFree == 0) {
         ref.read(gameRepositoryProvider).finishGame(game.id);
       }
     });
@@ -106,6 +110,18 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
             );
 
             final isCop = myParticipant.role == ParticipantRole.cop;
+            final isJailed = myParticipant.state == RobberState.jailed;
+            
+            // 수감 상태 시 감옥 화면으로 자동 이동
+            if (!isCop && isJailed) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  context.go('/prison/${widget.gameId}');
+                }
+              });
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
+
             final themeColor = isCop ? Colors.blue : Colors.red;
 
             // 남은 시간 계산
@@ -179,25 +195,63 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
                   
                   const Spacer(),
                   
+                  // 액션 버튼
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      children: [
+                        if (!isCop) ...[
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => _showMyQr(context, currentUser?.uid),
+                              icon: const Icon(Icons.qr_code, color: Colors.white),
+                              label: const Text('내 QR 코드'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                        ],
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => context.push(
+                              '/qr-scan/${widget.gameId}?isCop=$isCop',
+                            ),
+                            icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
+                            label: Text(isCop ? '도둑 체포 (스캔)' : '동료 구출 (스캔)'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: themeColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  
                   // 역할별 안내 문구
                   Padding(
-                    padding: const EdgeInsets.all(32),
+                    padding: const EdgeInsets.only(bottom: 48, left: 32, right: 32),
                     child: Text(
                       isCop 
                         ? '도둑을 잡고 QR 코드를 스캔하세요!' 
-                        : (myParticipant.state == RobberState.jailed 
-                            ? '수감되었습니다! 다른 도둑이 구출해주길 기다리세요.' 
-                            : '경찰을 피해 생존하세요!'),
+                        : '경찰을 피해 생존하세요! 감옥에 있는 동료를 구출할 수도 있습니다.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: themeColor.withOpacity(0.8),
                       ),
                     ),
                   ),
-                  
-                  const SizedBox(height: 48),
                 ],
               ),
             );
@@ -221,6 +275,42 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showMyQr(BuildContext context, String? uid) {
+    if (uid == null) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('내 구출용 QR 코드', textAlign: TextAlign.center),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('동료가 이 QR을 스캔하면 당신을 구출할 수 있습니다.', 
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: 200,
+              height: 200,
+              child: QrImageView(
+                data: 'catchrun:${widget.gameId}:$uid',
+                version: QrVersions.auto,
+                size: 200.0,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('닫기'),
+          ),
+        ],
+      ),
     );
   }
 }

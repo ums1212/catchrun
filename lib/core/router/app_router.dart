@@ -8,6 +8,8 @@ import 'package:catchrun/features/game/presentation/create_game_screen.dart';
 import 'package:catchrun/features/game/presentation/join_game_screen.dart';
 import 'package:catchrun/features/game/presentation/lobby_screen.dart';
 import 'package:catchrun/features/game/presentation/play_screen.dart';
+import 'package:catchrun/features/game/presentation/qr_scan_screen.dart';
+import 'package:catchrun/features/game/presentation/prison_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -52,6 +54,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final gameId = state.pathParameters['gameId']!;
           return PlayScreen(gameId: gameId);
+        },
+      ),
+      GoRoute(
+        path: '/qr-scan/:gameId',
+        builder: (context, state) {
+          final gameId = state.pathParameters['gameId']!;
+          final isCop = state.uri.queryParameters['isCop'] == 'true';
+          return QrScanScreen(gameId: gameId, isCop: isCop);
+        },
+      ),
+      GoRoute(
+        path: '/prison/:gameId',
+        builder: (context, state) {
+          final gameId = state.pathParameters['gameId']!;
+          return PrisonScreen(gameId: gameId);
         },
       ),
     ],

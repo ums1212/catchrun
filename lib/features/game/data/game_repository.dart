@@ -129,6 +129,19 @@ class GameRepository {
       transaction.update(_firestore.collection('games').doc(gameId), {
         'counts.total': FieldValue.increment(1),
       });
+
+      // 입장 이벤트 기록
+      final eventRef = _firestore.collection('games').doc(gameId).collection('events').doc();
+      transaction.set(eventRef, {
+        'type': 'PLAYER_JOINED',
+        'createdAt': FieldValue.serverTimestamp(),
+        'actorUid': user.uid,
+        'audience': 'all',
+        'payload': {
+          'nickname': user.nickname ?? '익명',
+          'message': '${user.nickname ?? '익명'}님이 입장했습니다.',
+        },
+      });
     });
 
     return gameId;
@@ -173,6 +186,19 @@ class GameRepository {
       transaction.set(participantRef, participant.toMap());
       transaction.update(_firestore.collection('games').doc(gameId), {
         'counts.total': FieldValue.increment(1),
+      });
+
+      // 입장 이벤트 기록
+      final eventRef = _firestore.collection('games').doc(gameId).collection('events').doc();
+      transaction.set(eventRef, {
+        'type': 'PLAYER_JOINED',
+        'createdAt': FieldValue.serverTimestamp(),
+        'actorUid': user.uid,
+        'audience': 'all',
+        'payload': {
+          'nickname': user.nickname ?? '익명',
+          'message': '${user.nickname ?? '익명'}님이 입장했습니다.',
+        },
       });
     });
 
@@ -220,14 +246,27 @@ class GameRepository {
       final durationSec = gameData['durationSec'] ?? 600;
       final endsAt = now.add(Duration(seconds: durationSec));
 
-      // 1. 게임 상태 업데이트
+      // 1. 실제 참가자 기반 인원수 재계산
+      final participantsSnapshot = await gameRef.collection('participants').get();
+      final participants = participantsSnapshot.docs
+          .map((doc) => ParticipantModel.fromMap(doc.data(), doc.id))
+          .toList();
+
+      final cops = participants.where((p) => p.role == ParticipantRole.cop).length;
+      final robbers = participants.where((p) => p.role == ParticipantRole.robber).length;
+
+      // 2. 게임 상태 및 카운트 업데이트
       transaction.update(gameRef, {
         'status': 'playing',
         'startedAt': FieldValue.serverTimestamp(),
         'endsAt': Timestamp.fromDate(endsAt),
+        'counts.cops': cops,
+        'counts.robbers': robbers,
+        'counts.robbersFree': robbers,
+        'counts.robbersJailed': 0,
       });
 
-      // 2. 시작 이벤트 기록
+      // 3. 시작 이벤트 기록
       final eventRef = gameRef.collection('events').doc();
       transaction.set(eventRef, {
         'type': 'GAME_STARTED',
@@ -299,6 +338,19 @@ class GameRepository {
         'counts.total': FieldValue.increment(-1),
       });
 
+      // 퇴장 이벤트 기록
+      final eventRef = gameRef.collection('events').doc();
+      transaction.set(eventRef, {
+        'type': 'PLAYER_LEFT',
+        'createdAt': FieldValue.serverTimestamp(),
+        'actorUid': uid,
+        'audience': 'all',
+        'payload': {
+          'nickname': (participantDoc.data() as Map<String, dynamic>?)?['nicknameSnapshot'] ?? '익명',
+          'message': '${(participantDoc.data() as Map<String, dynamic>?)?['nicknameSnapshot'] ?? '익명'}님이 퇴장했습니다.',
+        },
+      });
+
       // 3. 방장이 나가는 경우 처리
       if (isHost) {
         // 방장이 나가면 게임을 종료 상태로 변경 (또는 무효화)
@@ -310,6 +362,130 @@ class GameRepository {
           transaction.delete(_firestore.collection('gameCodes').doc(gameCode));
         }
       }
+    });
+  }
+
+  // 체포하기
+  Future<void> catchRobber({
+    required String gameId,
+    required String copUid,
+    required String robberUid,
+  }) async {
+    await _firestore.runTransaction((transaction) async {
+      final gameRef = _firestore.collection('games').doc(gameId);
+      final copRef = gameRef.collection('participants').doc(copUid);
+      final robberRef = gameRef.collection('participants').doc(robberUid);
+
+      final gameDoc = await transaction.get(gameRef);
+      final copDoc = await transaction.get(copRef);
+      final robberDoc = await transaction.get(robberRef);
+
+      if (!gameDoc.exists || !copDoc.exists || !robberDoc.exists) return;
+
+      final robberData = ParticipantModel.fromMap(robberDoc.data()!, robberUid);
+      if (robberData.role != ParticipantRole.robber || robberData.state == RobberState.jailed) {
+        return; // 도둑이 아니거나 이미 수감 중
+      }
+
+      // 1. 도둑 상태 업데이트
+      transaction.update(robberRef, {
+        'state': RobberState.jailed.name,
+        'jailedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // 2. 경찰 통계 및 점수 업데이트
+      transaction.update(copRef, {
+        'stats.catches': FieldValue.increment(1),
+        'score': FieldValue.increment(100), // 체포 점수: 100
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // 3. 게임 카운트 업데이트
+      transaction.update(gameRef, {
+        'counts.robbersFree': FieldValue.increment(-1),
+        'counts.robbersJailed': FieldValue.increment(1),
+      });
+
+      // 4. 상세 CAUGHT 이벤트 기록
+      final eventRef = gameRef.collection('events').doc();
+      final copNickname = (copDoc.data() as Map<String, dynamic>?)?['nicknameSnapshot'] ?? '경찰';
+      final robberNickname = (robberDoc.data() as Map<String, dynamic>?)?['nicknameSnapshot'] ?? '도둑';
+
+      transaction.set(eventRef, {
+        'type': 'CAUGHT',
+        'createdAt': FieldValue.serverTimestamp(),
+        'actorUid': copUid,
+        'targetUid': robberUid,
+        'audience': 'all',
+        'payload': {
+          'actorNickname': copNickname,
+          'targetNickname': robberNickname,
+          'message': '경찰 $copNickname님이 도둑 $robberNickname님을 체포했습니다!',
+        },
+      });
+    });
+  }
+
+  // 구출하기
+  Future<void> rescueRobber({
+    required String gameId,
+    required String rescuerUid,
+    required String jailedUid,
+  }) async {
+    await _firestore.runTransaction((transaction) async {
+      final gameRef = _firestore.collection('games').doc(gameId);
+      final rescuerRef = gameRef.collection('participants').doc(rescuerUid);
+      final jailedRef = gameRef.collection('participants').doc(jailedUid);
+
+      final gameDoc = await transaction.get(gameRef);
+      final rescuerDoc = await transaction.get(rescuerRef);
+      final jailedDoc = await transaction.get(jailedRef);
+
+      if (!gameDoc.exists || !rescuerDoc.exists || !jailedDoc.exists) return;
+
+      final rescuerData = ParticipantModel.fromMap(rescuerDoc.data()!, rescuerUid);
+      final jailedData = ParticipantModel.fromMap(jailedDoc.data()!, jailedUid);
+
+      if (jailedData.state != RobberState.jailed) return; // 이미 자유 상태
+
+      // 1. 도둑 상태 업데이트
+      transaction.update(jailedRef, {
+        'state': RobberState.free.name,
+        'releasedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // 2. 구출자 통계 및 점수 업데이트
+      transaction.update(rescuerRef, {
+        'stats.rescues': FieldValue.increment(1),
+        'score': FieldValue.increment(50), // 구출 점수: 50
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // 3. 게임 카운트 업데이트
+      transaction.update(gameRef, {
+        'counts.robbersFree': FieldValue.increment(1),
+        'counts.robbersJailed': FieldValue.increment(-1),
+      });
+
+      // 4. 상세 RESCUED 이벤트 기록
+      final eventRef = gameRef.collection('events').doc();
+      final rescuerNickname = (rescuerDoc.data() as Map<String, dynamic>?)?['nicknameSnapshot'] ?? '도둑';
+      final jailedNickname = (jailedDoc.data() as Map<String, dynamic>?)?['nicknameSnapshot'] ?? '도둑';
+
+      transaction.set(eventRef, {
+        'type': 'RESCUED',
+        'createdAt': FieldValue.serverTimestamp(),
+        'actorUid': rescuerUid,
+        'targetUid': jailedUid,
+        'audience': 'all',
+        'payload': {
+          'actorNickname': rescuerNickname,
+          'targetNickname': jailedNickname,
+          'message': '도둑 $rescuerNickname님이 $jailedNickname님을 구출했습니다!',
+        },
+      });
     });
   }
 
