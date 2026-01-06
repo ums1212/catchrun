@@ -21,6 +21,17 @@ class QrScanScreen extends ConsumerStatefulWidget {
 
 class _QrScanScreenState extends ConsumerState<QrScanScreen> {
   bool _isProcessing = false;
+  final MobileScannerController _controller = MobileScannerController(
+    facing: CameraFacing.back,
+    torchEnabled: false,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
 
   void _onDetect(BarcodeCapture capture) async {
     if (_isProcessing) return;
@@ -30,12 +41,19 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
       final String? code = barcode.rawValue;
       if (code != null) {
         setState(() => _isProcessing = true);
+        await _controller.stop(); // 스캐너 일시 정지
         await _processQrData(code);
-        if (mounted) setState(() => _isProcessing = false);
+        if (mounted) {
+          setState(() => _isProcessing = false);
+          // 실패 시 다시 시작하려면 여기서 로직 추가 가능하지만, 
+          // 현재는 성공/실패 상관없이 pop하거나 에러를 보여줍니다.
+          if (!_isProcessing) await _controller.start(); 
+        }
         break;
       }
     }
   }
+
 
   Future<void> _processQrData(String data) async {
     // 포맷: catchrun:{gameId}:{uid}
@@ -80,14 +98,21 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
         _showSuccess('구출 성공!');
       }
       
-      if (context.mounted) context.pop();
+      if (mounted && context.canPop()) {
+        context.pop();
+      }
+
     } catch (e) {
-      _showError('처리 중 오류가 발생했습니다: $e');
+      // e가 이미 '이미 체포된 도둑입니다' 인 경우 등에 대해 깔끔하게 표시
+      final message = e.toString().replaceFirst('Exception: ', '');
+      _showError(message);
     }
   }
 
+
   void _showError(String message) {
     if (!context.mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
@@ -95,10 +120,12 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
 
   void _showSuccess(String message) {
     if (!context.mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -112,11 +139,9 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
         children: [
           MobileScanner(
             onDetect: _onDetect,
-            controller: MobileScannerController(
-              facing: CameraFacing.back,
-              torchEnabled: false,
-            ),
+            controller: _controller,
           ),
+
           // 스캔 영역 가이드 UI
           Center(
             child: Container(

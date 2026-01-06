@@ -22,6 +22,8 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
   Duration _remainingTime = Duration.zero;
   Map<String, dynamic>? _lastEvent;
   String? _lastEventId;
+  bool _isProcessingAction = false; // 디바운스용
+
 
   @override
   void initState() {
@@ -58,14 +60,8 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
         ref.read(gameRepositoryProvider).finishGame(game.id);
         return;
       }
+      // 도둑 전원 수감 체크는 이제 GameRepository.catchRobber 트랜잭션 내에서 처리됩니다.
 
-      // 2. 도둑 전원 수감 체크 (게임 시작 직후 동기화 지연 대비하여 startedAt 이후에만 체크)
-      if (game.startedAt != null && 
-          DateTime.now().difference(game.startedAt!).inSeconds > 2 && 
-          game.counts.robbers > 0 && 
-          game.counts.robbersFree == 0) {
-        ref.read(gameRepositoryProvider).finishGame(game.id);
-      }
     });
     
     setState(() {});
@@ -95,15 +91,14 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
         
         if (game.status == GameStatus.finished) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('게임이 종료되었습니다!')),
-              );
-              context.go('/home'); // 결과 화면(Sprint 6) 전까지는 홈으로
+            if (mounted) {
+              context.go('/result/${widget.gameId}');
             }
+
           });
           return const Scaffold(body: Center(child: Text('게임이 종료되었습니다.')));
         }
+
         return StreamBuilder<List<ParticipantModel>>(
           stream: participantsAsync,
           builder: (context, partSnapshot) {
@@ -212,6 +207,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
                                   onPressed: () => _showMyQr(context, currentUser?.uid),
                                   icon: const Icon(Icons.qr_code, color: Colors.white),
                                   label: const Text('내 QR 코드'),
+
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.orange,
                                     foregroundColor: Colors.white,
@@ -224,9 +220,15 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
                             ],
                             Expanded(
                               child: ElevatedButton.icon(
-                                onPressed: () => context.push(
-                                  '/qr-scan/${widget.gameId}?isCop=$isCop',
-                                ),
+                                onPressed: _isProcessingAction ? null : () async {
+                                  setState(() => _isProcessingAction = true);
+                                  context.push(
+                                    '/qr-scan/${widget.gameId}?isCop=$isCop',
+                                  );
+                                  // 화면 복귀 후 잠시 대기 (디바운스)
+                                  await Future.delayed(const Duration(seconds: 2));
+                                  if (mounted) setState(() => _isProcessingAction = false);
+                                },
                                 icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
                                 label: Text(isCop ? '도둑 체포 (스캔)' : '동료 구출 (스캔)'),
                                 style: ElevatedButton.styleFrom(
@@ -237,6 +239,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
                                 ),
                               ),
                             ),
+
                           ],
                         ),
                       ),
@@ -312,11 +315,11 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('내 구출용 QR 코드', textAlign: TextAlign.center),
+        title: const Text('내 식별용 QR 코드', textAlign: TextAlign.center),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('동료가 이 QR을 스캔하면 당신을 구출할 수 있습니다.', 
+            const Text('경찰이 스캔하면 체포되며, 동료가 스캔하면 당신을 구출할 수 있습니다.', 
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),

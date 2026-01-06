@@ -10,6 +10,8 @@ import 'package:catchrun/features/game/presentation/lobby_screen.dart';
 import 'package:catchrun/features/game/presentation/play_screen.dart';
 import 'package:catchrun/features/game/presentation/qr_scan_screen.dart';
 import 'package:catchrun/features/game/presentation/prison_screen.dart';
+import 'package:catchrun/features/game/presentation/result_screen.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -71,6 +73,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           return PrisonScreen(gameId: gameId);
         },
       ),
+      GoRoute(
+        path: '/result/:gameId',
+        builder: (context, state) {
+          final gameId = state.pathParameters['gameId']!;
+          return ResultScreen(gameId: gameId);
+        },
+      ),
+
     ],
     redirect: (context, state) {
       final authState = ref.read(authStateChangesProvider);

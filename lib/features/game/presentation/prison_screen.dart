@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:nfc_manager/nfc_manager.dart';
-import 'package:ndef_record/ndef_record.dart';
 import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 import 'package:app_settings/app_settings.dart';
 import 'package:catchrun/core/models/game_model.dart';
@@ -10,7 +9,6 @@ import 'package:catchrun/core/models/participant_model.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:typed_data';
 
 class PrisonScreen extends ConsumerStatefulWidget {
   final String gameId;
@@ -25,40 +23,47 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
   bool _isScanning = false;
 
   Future<void> _useNfcKey() async {
-    bool isAvailable = await NfcManager.instance.isAvailable();
-    if (!isAvailable) {
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('NFC 기능 비활성화'),
-            content: const Text('NFC 기능이 꺼져 있거나 지원되지 않는 기기입니다. 설정에서 NFC를 활성화해 주세요.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('취소'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  await AppSettings.openAppSettings(type: AppSettingsType.nfc);
-                  if (context.mounted) Navigator.pop(context);
-                },
-                child: const Text('설정으로 이동'),
-              ),
-            ],
-          ),
-        );
-      }
+    final availability = await NfcManager.instance.checkAvailability();
+    
+    if (availability != NfcAvailability.enabled) {
+      if (!mounted) return;
+
+
+      showDialog(
+        context: context,
+        builder: (innerContext) => AlertDialog(
+          title: const Text('NFC 기능 비활성화'),
+          content: const Text('NFC 기능이 꺼져 있거나 지원되지 않는 기기입니다. 설정에서 NFC를 활성화해 주세요.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(innerContext),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await AppSettings.openAppSettings(type: AppSettingsType.nfc);
+                if (innerContext.mounted) {
+                  Navigator.pop(innerContext);
+                }
+              },
+              child: const Text('설정으로 이동'),
+            ),
+          ],
+        ),
+      );
       return;
     }
 
     setState(() => _isScanning = true);
     
-    if (!context.mounted) return;
+    if (!mounted) return;
+
 
     showDialog(
       context: context,
       barrierDismissible: false,
+
+
       builder: (context) => AlertDialog(
         title: const Text('NFC 열쇠 사용'),
         content: const Column(
@@ -109,22 +114,22 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
 
         await NfcManager.instance.stopSession();
         
-        if (context.mounted) {
-          Navigator.pop(context); // 다이얼로그 닫기
-          setState(() => _isScanning = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('탈출 성공!')),
-          );
-        }
+        if (!mounted) return;
+        Navigator.pop(context); // 다이얼로그 닫기
+        setState(() => _isScanning = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('탈출 성공!')),
+        );
+
       } catch (e) {
         await NfcManager.instance.stopSession();
-        if (context.mounted) {
-          Navigator.pop(context);
-          setState(() => _isScanning = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('탈출 실패: $e')),
-          );
-        }
+        if (!mounted) return;
+        Navigator.pop(context);
+        setState(() => _isScanning = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('탈출 실패: $e')),
+        );
+
       }
     });
   }
@@ -212,8 +217,9 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  '내 구출용 QR 코드',
+                  '식별용 QR 코드 (체포/구출)',
                   style: TextStyle(
+
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w500,

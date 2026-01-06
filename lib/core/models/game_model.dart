@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'participant_model.dart';
+
 
 enum GameStatus {
   lobby,
@@ -22,7 +24,9 @@ class GameModel {
   final String joinQrToken;
   final bool joinQrEnabled;
   final GameStatus status;
+  final ParticipantRole? winnerRole;
   final DateTime createdAt;
+
   final DateTime? startedAt;
   final DateTime? endsAt;
   final int durationSec;
@@ -39,7 +43,9 @@ class GameModel {
     required this.joinQrToken,
     this.joinQrEnabled = true,
     required this.status,
+    this.winnerRole,
     required this.createdAt,
+
     this.startedAt,
     this.endsAt,
     this.durationSec = 600,
@@ -57,7 +63,9 @@ class GameModel {
       'joinQrToken': joinQrToken,
       'joinQrEnabled': joinQrEnabled,
       'status': status.name,
+      'winnerRole': winnerRole?.name,
       'createdAt': Timestamp.fromDate(createdAt),
+
       'startedAt': startedAt != null ? Timestamp.fromDate(startedAt!) : null,
       'endsAt': endsAt != null ? Timestamp.fromDate(endsAt!) : null,
       'durationSec': durationSec,
@@ -77,7 +85,9 @@ class GameModel {
       joinQrToken: map['joinQrToken'] ?? '',
       joinQrEnabled: map['joinQrEnabled'] ?? true,
       status: GameStatus.fromString(map['status'] ?? 'lobby'),
+      winnerRole: map['winnerRole'] != null ? ParticipantRole.fromString(map['winnerRole']) : null,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+
       startedAt: (map['startedAt'] as Timestamp?)?.toDate(),
       endsAt: (map['endsAt'] as Timestamp?)?.toDate(),
       durationSec: map['durationSec'] ?? 600,

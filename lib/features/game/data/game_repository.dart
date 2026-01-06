@@ -17,7 +17,9 @@ class GameRepository {
     required String title,
     required GameRule rule,
     required AppUser host,
+    int durationSec = 600,
   }) async {
+
     final gameId = _firestore.collection('games').doc().id;
     final gameCode = _generateRandomCode(9);
     final inviteCode = _generateRandomCode(6);
@@ -32,7 +34,9 @@ class GameRepository {
       joinQrToken: joinQrToken,
       status: GameStatus.lobby,
       createdAt: DateTime.now(),
+      durationSec: durationSec,
       rule: rule,
+
       counts: GameCounts(
         total: 1,
         robbers: rule.robbersCount,
@@ -269,6 +273,14 @@ class GameRepository {
         'counts.robbersJailed': 0,
       });
 
+      // 2.5 모든 참가자의 lastStateChangedAt 초기화
+      for (final doc in participantsSnapshot.docs) {
+        transaction.update(doc.reference, {
+          'lastStateChangedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+
       // 3. 시작 이벤트 기록
       final eventRef = gameRef.collection('events').doc();
       transaction.set(eventRef, {
@@ -284,6 +296,69 @@ class GameRepository {
     });
   }
 
+  // 내부 공통 종료 로직 (반드시 트랜잭션 내에서 호출)
+  Future<void> _finishGameInternal({
+    required Transaction transaction,
+    required DocumentReference gameRef,
+    required Map<String, dynamic> gameData,
+    required DateTime now,
+  }) async {
+    // 1. 모든 참가자 정보를 가져와서 승리 판정 및 점수 정산
+    final participantsSnapshot = await gameRef.collection('participants').get();
+    final participants = participantsSnapshot.docs
+        .map((doc) => ParticipantModel.fromMap(doc.data(), doc.id))
+        .toList();
+
+
+    final counts = gameData['counts'] as Map<String, dynamic>?;
+    final robbersFree = counts?['robbersFree'] as int? ?? 0;
+    
+    // 도둑이 한 명도 안 남았으면 경찰 승리, 아니면 도둑 승리
+    final winnerRole = (robbersFree == 0) ? ParticipantRole.cop : ParticipantRole.robber;
+
+    // 2. 각 참가자 최종 점수 정산 (도둑 생존 점수 등)
+    for (final p in participants) {
+      if (p.role == ParticipantRole.robber) {
+        int addedSurvivalSec = 0;
+        if (p.state == RobberState.free) {
+          final lastChanged = p.lastStateChangedAt ?? (gameData['startedAt'] as Timestamp?)?.toDate() ?? now;
+          addedSurvivalSec = now.difference(lastChanged).inSeconds;
+        }
+        
+        final finalSurvivalSec = p.stats.survivalSec + addedSurvivalSec;
+        final survivalScore = finalSurvivalSec; 
+
+        transaction.update(gameRef.collection('participants').doc(p.uid), {
+          'stats.survivalSec': finalSurvivalSec,
+          'score': FieldValue.increment(survivalScore),
+          'lastStateChangedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    }
+
+    // 3. 게임 상태 업데이트
+    transaction.update(gameRef, {
+      'status': 'finished',
+      'finishedAt': FieldValue.serverTimestamp(),
+      'winnerRole': winnerRole.name,
+    });
+
+    // 4. 종료 이벤트 기록
+    final eventRef = gameRef.collection('events').doc();
+    transaction.set(eventRef, {
+      'type': 'GAME_ENDED',
+      'createdAt': FieldValue.serverTimestamp(),
+      'actorUid': gameData['hostUid'],
+      'audience': 'all',
+      'payload': {
+        'message': '게임이 종료되었습니다! ${winnerRole == ParticipantRole.cop ? "경찰" : "도둑"} 승리!',
+        'winnerRole': winnerRole.name,
+        'durationMs': 3000,
+      },
+    });
+  }
+
+
   // 게임 종료
   Future<void> finishGame(String gameId) async {
     await _firestore.runTransaction((transaction) async {
@@ -294,26 +369,15 @@ class GameRepository {
       final gameData = gameDoc.data()!;
       if (gameData['status'] != 'playing') return;
 
-      // 1. 상태 업데이트
-      transaction.update(gameRef, {
-        'status': 'finished',
-        'finishedAt': FieldValue.serverTimestamp(),
-      });
-
-      // 2. 종료 이벤트 기록
-      final eventRef = gameRef.collection('events').doc();
-      transaction.set(eventRef, {
-        'type': 'GAME_ENDED',
-        'createdAt': FieldValue.serverTimestamp(),
-        'actorUid': gameData['hostUid'],
-        'audience': 'all',
-        'payload': {
-          'message': '게임이 종료되었습니다! 결과를 확인하세요.',
-          'durationMs': 3000,
-        },
-      });
+      await _finishGameInternal(
+        transaction: transaction,
+        gameRef: gameRef,
+        gameData: gameData,
+        now: DateTime.now(),
+      );
     });
   }
+
 
   // 게임 나가기
   Future<void> leaveGame({
@@ -386,16 +450,27 @@ class GameRepository {
       if (!gameDoc.exists || !copDoc.exists || !robberDoc.exists) return;
 
       final robberData = ParticipantModel.fromMap(robberDoc.data()!, robberUid);
-      if (robberData.role != ParticipantRole.robber || robberData.state == RobberState.jailed) {
-        return; // 도둑이 아니거나 이미 수감 중
+      if (robberData.role != ParticipantRole.robber) {
+        throw Exception('도둑이 아닙니다.');
       }
+      if (robberData.state == RobberState.jailed) {
+        throw Exception('이미 체포된 도둑입니다.');
+      }
+
+
+      final now = DateTime.now();
+      final lastChanged = robberData.lastStateChangedAt ?? (gameDoc.data()!['startedAt'] as Timestamp?)?.toDate() ?? now;
+      final addedSurvivalSec = now.difference(lastChanged).inSeconds;
 
       // 1. 도둑 상태 업데이트
       transaction.update(robberRef, {
         'state': RobberState.jailed.name,
         'jailedAt': FieldValue.serverTimestamp(),
+        'lastStateChangedAt': FieldValue.serverTimestamp(),
+        'stats.survivalSec': FieldValue.increment(addedSurvivalSec),
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
 
       // 2. 경찰 통계 및 점수 업데이트
       transaction.update(copRef, {
@@ -427,8 +502,24 @@ class GameRepository {
           'message': '경찰 $copNickname님이 도둑 $robberNickname님을 체포했습니다!',
         },
       });
+
+      // 5. 마지막 도둑이었는지 확인하여 자동 종료 (백엔드 성격의 트랜잭션 로직)
+      final counts = (gameDoc.data()!['counts'] as Map<String, dynamic>);
+      if (counts['robbersFree'] - 1 <= 0) {
+        // 모든 도둑이 잡힘 -> 즉시 종료 처리 루틴
+        final updatedGameData = Map<String, dynamic>.from(gameDoc.data()!);
+        updatedGameData['counts']['robbersFree'] = 0; // 강제로 0으로 설정하여 내부 로직에서 cop 승리로 판정되게 함
+        
+        await _finishGameInternal(
+          transaction: transaction,
+          gameRef: gameRef,
+          gameData: updatedGameData,
+          now: now,
+        );
+      }
     });
   }
+
 
   // 구출하기
   Future<void> rescueRobber({
@@ -450,7 +541,10 @@ class GameRepository {
       final rescuerData = ParticipantModel.fromMap(rescuerDoc.data()!, rescuerUid);
       final jailedData = ParticipantModel.fromMap(jailedDoc.data()!, jailedUid);
 
-      if (jailedData.state != RobberState.jailed) return; // 이미 자유 상태
+      if (jailedData.state != RobberState.jailed) {
+        throw Exception('이미 자유 상태인 도둑입니다.');
+      }
+
 
       // 구출 제한 체크 (열쇠 사용 후 5분간)
       if (rescuerData.rescueDisabledUntil != null && 
@@ -462,8 +556,10 @@ class GameRepository {
       transaction.update(jailedRef, {
         'state': RobberState.free.name,
         'releasedAt': FieldValue.serverTimestamp(),
+        'lastStateChangedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
 
       // 2. 구출자 통계 및 점수 업데이트
       transaction.update(rescuerRef, {
@@ -532,9 +628,11 @@ class GameRepository {
         'state': RobberState.free.name,
         'releasedAt': FieldValue.serverTimestamp(),
         'rescueDisabledUntil': Timestamp.fromDate(rescueDisabledUntil),
+        'lastStateChangedAt': FieldValue.serverTimestamp(),
         'stats.keyUsed': true,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
 
       // 2. 게임 상태 업데이트 (열쇠 사용 기록 + 카운트)
       transaction.update(gameRef, {

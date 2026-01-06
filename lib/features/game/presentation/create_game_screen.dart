@@ -37,6 +37,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
 
       final gameId = await ref.read(gameRepositoryProvider).createGame(
             title: _titleController.text,
+            durationSec: _durationMinutes * 60,
             rule: GameRule(
               copsCount: _copsCount,
               robbersCount: _robbersCount,
@@ -47,15 +48,17 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
             host: user,
           );
 
-      if (context.mounted) {
-        context.pushReplacement('/lobby/$gameId');
-      }
+      if (!mounted) return;
+
+      context.go('/lobby/$gameId');
+
+
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('게임 생성 중 오류 발생: $e')),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('게임 생성 중 오류 발생: $e')),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

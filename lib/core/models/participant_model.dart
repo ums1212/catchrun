@@ -39,6 +39,8 @@ class ParticipantModel {
   final int score;
   final ParticipantStats stats;
   final DateTime? rescueDisabledUntil;
+  final DateTime? lastStateChangedAt;
+
 
   ParticipantModel({
     required this.uid,
@@ -55,7 +57,9 @@ class ParticipantModel {
     this.rescueDisabledUntil,
     this.score = 0,
     required this.stats,
+    this.lastStateChangedAt,
   });
+
 
   Map<String, dynamic> toMap() {
     return {
@@ -73,7 +77,9 @@ class ParticipantModel {
       'rescueDisabledUntil': rescueDisabledUntil != null ? Timestamp.fromDate(rescueDisabledUntil!) : null,
       'score': score,
       'stats': stats.toMap(),
+      'lastStateChangedAt': lastStateChangedAt != null ? Timestamp.fromDate(lastStateChangedAt!) : null,
       'updatedAt': FieldValue.serverTimestamp(),
+
     };
   }
 
@@ -93,7 +99,9 @@ class ParticipantModel {
       rescueDisabledUntil: (map['rescueDisabledUntil'] as Timestamp?)?.toDate(),
       score: map['score'] ?? 0,
       stats: ParticipantStats.fromMap(map['stats'] ?? {}),
+      lastStateChangedAt: (map['lastStateChangedAt'] as Timestamp?)?.toDate(),
     );
+
   }
 }
 

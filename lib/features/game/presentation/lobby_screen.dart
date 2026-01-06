@@ -4,10 +4,10 @@ import 'package:catchrun/features/game/data/game_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:nfc_manager/ndef_record.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:nfc_manager/nfc_manager.dart';
-import 'package:ndef_record/ndef_record.dart';
 import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 import 'package:app_settings/app_settings.dart';
 import 'dart:typed_data';
@@ -95,8 +95,11 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   }
 
   Future<void> _registerNfcKey(GameModel game) async {
-    bool isAvailable = await NfcManager.instance.isAvailable();
-    if (!isAvailable) {
+    final availability = await NfcManager.instance.checkAvailability();
+    if (availability != NfcAvailability.enabled) {
+
+
+
       if (mounted) {
         showDialog(
           context: context,
@@ -110,9 +113,13 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
               ),
               TextButton(
                 onPressed: () async {
+                  final navigator = Navigator.of(context);
                   await AppSettings.openAppSettings(type: AppSettingsType.nfc);
-                  if (context.mounted) Navigator.pop(context);
+                  if (mounted) {
+                    navigator.pop();
+                  }
                 },
+
                 child: const Text('설정으로 이동'),
               ),
             ],
@@ -122,7 +129,8 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
       return;
     }
 
-    if (!context.mounted) return;
+    if (!mounted) return;
+
 
     showDialog(
       context: context,

@@ -59,12 +59,13 @@ class _EventPopupOverlayState extends State<EventPopupOverlay> with SingleTicker
     final durationMs = payload?['durationMs'] as int? ?? 3000;
 
     _dismissTimer = Timer(Duration(milliseconds: durationMs), () {
-      if (context.mounted) {
+      if (mounted) {
         _controller.reverse().then((_) {
-          if (context.mounted) widget.onDismiss();
+          if (mounted) widget.onDismiss();
         });
       }
     });
+
   }
 
   @override
