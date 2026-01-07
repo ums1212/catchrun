@@ -15,6 +15,25 @@
 
 ## 2026-01-07 (수)
 
+### 🚀 게스트 로그인 기능 추가 (Guest Login Support)
+
+#### ✅ 주요 작업 및 성과
+- **Firebase 익명 인증(Anonymous Auth) 통합**
+    - `AuthRepository`: `signInAnonymously()` 메서드를 추가하여 구글 계정 없이도 인증 세션을 생성할 수 있도록 구현
+    - `AuthController`: 익명 로그인 후 Firestore `users` 컬렉션에 사용자 문서를 자동 생성하는 로직(`_handleUserSignIn`) 추가
+- **로그인 UI 개선**
+    - `LoginScreen`: Google 로그인 버튼 하단에 "게스트로 시작하기" 버튼을 추가하여 접근성 향상
+    - 디자인 일관성을 위해 `TextButton` 형태의 가벼운 UI 적용
+
+#### 📝 비고 / 특이사항
+- **트러블슈팅: `admin-restricted-operation` 에러**
+    - 게스트 로그인 시 발생한 인증 실패 에러를 Firebase 콘솔의 **Authentication > Sign-in method**에서 '익명' 제공업체를 활성화하여 해결함.
+- **UX 설계: 로그인 후 스플래시 화면 노출 원인**
+    - 로그인 직후 Firestore에서 프로필 정보를 가져오는 비동기 로드 시간 동안 `app_router.dart`의 리다이렉션 로직(`isLoading`)에 의해 로딩 화면(Splash)이 잠깐 노출됨을 확인 및 안내함.
+
+---
+
+
 ### 🚀 앱 아이콘 설정 (App Icon Setup)
 
 #### ✅ 주요 작업 및 성과

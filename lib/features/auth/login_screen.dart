@@ -40,22 +40,37 @@ class LoginScreen extends ConsumerWidget {
               if (authState.isLoading)
                 const CircularProgressIndicator()
               else
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black87,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(color: Colors.grey),
+                Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black87,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(color: Colors.grey),
+                          ),
+                        ),
+                        onPressed: () => ref.read(authControllerProvider.notifier).signInWithGoogle(),
+                        icon: const Icon(Icons.login), // 나중에 구글 아이콘으로 교체 가능
+                        label: const Text('Google 계정으로 로그인'),
                       ),
                     ),
-                    onPressed: () => ref.read(authControllerProvider.notifier).signInWithGoogle(),
-                    icon: const Icon(Icons.login), // 나중에 구글 아이콘으로 교체 가능
-                    label: const Text('Google 계정으로 로그인'),
-                  ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () => ref.read(authControllerProvider.notifier).signInAnonymously(),
+                      child: Text(
+                        '게스트로 시작하기',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
             ],
           ),

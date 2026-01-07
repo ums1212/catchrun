@@ -1,6 +1,7 @@
 import 'package:catchrun/core/auth/auth_repository.dart';
 import 'package:catchrun/core/models/user_model.dart';
 import 'package:catchrun/core/user/user_repository.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // 현재 인증된 사용자의 Firestore 정보를 가져오는 프로바이더
@@ -31,19 +32,32 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
       final credential = await _authRepository.signInWithGoogle();
       
       if (credential != null && credential.user != null) {
-        // 기존 사용자인지 확인
-        final exists = await _userRepository.userExists(credential.user!.uid);
-
-        if (!exists) {
-          final newUser = AppUser(
-            uid: credential.user!.uid,
-            email: credential.user!.email ?? '',
-          );
-          await _userRepository.createUser(newUser);
-        }
+        await _handleUserSignIn(credential.user!);
       }
     });
+  }
 
+  Future<void> signInAnonymously() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final credential = await _authRepository.signInAnonymously();
+      
+      if (credential != null && credential.user != null) {
+        await _handleUserSignIn(credential.user!);
+      }
+    });
+  }
+
+  Future<void> _handleUserSignIn(User firebaseUser) async {
+    final exists = await _userRepository.userExists(firebaseUser.uid);
+
+    if (!exists) {
+      final newUser = AppUser(
+        uid: firebaseUser.uid,
+        email: firebaseUser.email ?? '',
+      );
+      await _userRepository.createUser(newUser);
+    }
   }
 
 
