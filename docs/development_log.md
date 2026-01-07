@@ -25,8 +25,23 @@
     - 안드로이드: `launcher_icon.png`, `ic_launcher.png` 등 레거시 및 어댑티브 아이콘 세트 생성
     - iOS: `AppIcon.appiconset` 내 다양한 해상도(20x20 ~ 1024x1024)의 아이콘 파일 일괄 생성 및 적용
 
+---
+
+### 🚀 앱 이름 다국어 설정 (App Name Localization)
+
+#### ✅ 주요 작업 및 성과
+- **Android 앱 이름 다국어화**
+    - `res/values/strings.xml`: 기본 앱 이름을 "CatchRun"으로 설정
+    - `res/values-ko/strings.xml`: 한국어 앱 이름을 "캐치런"으로 설정
+    - `AndroidManifest.xml`: `android:label`을 `@string/app_name` 참조 방식으로 변경
+- **iOS 앱 이름 다국어화**
+    - `en.lproj/InfoPlist.strings`: 영어 표시 이름을 "CatchRun"으로 설정
+    - `ko.lproj/InfoPlist.strings`: 한국어 표시 이름을 "캐치런"으로 설정
+    - `Info.plist`: `CFBundleDisplayName` 및 `CFBundleName`을 "CatchRun"으로 통일하여 기본값 설정
+
 #### 📝 비고 / 특이사항
-- 제공된 고해상도 이미지(`app_icon.png`)를 기반으로 모든 플랫폼 규격에 맞는 아이콘이 성공적으로 생성됨을 확인하였음.
+- 시스템 언어 설정에 따라 홈 화면 및 설정 메뉴에서 앱 이름이 영어 또는 한국어로 자동 전환됨을 확인하기 위한 기초 설정을 마침.
+
 
 ---
 
