@@ -1,4 +1,5 @@
 import 'package:catchrun/features/auth/auth_controller.dart';
+import 'package:catchrun/features/auth/widgets/auth_background.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,58 +22,77 @@ class LoginScreen extends ConsumerWidget {
     final authState = ref.watch(authControllerProvider);
 
     return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'CATCH RUN',
-                style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
+      body: AuthBackground(
+        child: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ShaderMask(
+                    shaderCallback: (rect) {
+                      return const RadialGradient(
+                        center: Alignment.center,
+                        radius: 1.5,
+                        colors: [Colors.black, Colors.transparent],
+                        stops: [0.8, 1.0],
+                      ).createShader(rect);
+                    },
+                    blendMode: BlendMode.dstIn,
+                    child: Image.asset(
+                      'assets/image/title_logo.png',
+                      height: 120,
+                      fit: BoxFit.contain,
                     ),
-              ),
-              const SizedBox(height: 12),
-              const Text('현실에서 즐기는 추격 게임'),
-              const SizedBox(height: 64),
-              if (authState.isLoading)
-                const CircularProgressIndicator()
-              else
-                Column(
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black87,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 64),
+                  if (authState.isLoading)
+                    const CircularProgressIndicator(color: Colors.white)
+                  else
+                    Column(
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black87,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () => ref.read(authControllerProvider.notifier).signInWithGoogle(),
+                            icon: const Icon(Icons.login),
+                            label: const Text(
+                              'Google 계정으로 로그인',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
-                        onPressed: () => ref.read(authControllerProvider.notifier).signInWithGoogle(),
-                        icon: const Icon(Icons.login), // 나중에 구글 아이콘으로 교체 가능
-                        label: const Text('Google 계정으로 로그인'),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: () => ref.read(authControllerProvider.notifier).signInAnonymously(),
-                      child: Text(
-                        '게스트로 시작하기',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          decoration: TextDecoration.underline,
+                        const SizedBox(height: 16),
+                        TextButton(
+                          onPressed: () => ref.read(authControllerProvider.notifier).signInAnonymously(),
+                          child: const Text(
+                            '게스트로 시작하기',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              decoration: TextDecoration.underline,
+                              decorationColor: Colors.white,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-            ],
+                ],
+              ),
+            ),
           ),
         ),
       ),

@@ -1,3 +1,4 @@
+import 'package:catchrun/features/auth/widgets/auth_background.dart';
 import 'package:flutter/material.dart';
 
 class SplashScreen extends StatelessWidget {
@@ -6,21 +7,14 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Hero(
-              tag: 'app_logo',
-              child: Image.asset(
-                'assets/icon/app_icon.png',
-                width: 120,
-                height: 120,
-              ),
-            ),
-            const SizedBox(height: 24),
-            const CircularProgressIndicator(),
-          ],
+      body: AuthBackground(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+            ],
+          ),
         ),
       ),
     );
