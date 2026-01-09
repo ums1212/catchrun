@@ -52,27 +52,13 @@ class LoginScreen extends ConsumerWidget {
                   else
                     Column(
                       children: [
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Colors.black87,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            onPressed: () => ref.read(authControllerProvider.notifier).signInWithGoogle(),
-                            icon: const Icon(Icons.login),
-                            label: const Text(
-                              'Google 계정으로 로그인',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                        InkWell(
+                          onTap: () => ref.read(authControllerProvider.notifier).signInWithGoogle(),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            'assets/image/android_neutral_sq_ctn@4x.png',
+                            height: 56,
+                            fit: BoxFit.contain,
                           ),
                         ),
                         const SizedBox(height: 16),
