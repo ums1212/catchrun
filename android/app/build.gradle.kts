@@ -1,5 +1,8 @@
 plugins {
     id("com.android.application")
+    // START: flutter_config
+    id("com.github.gdelataillade.flutter_config")
+    // END: flutter_config
     // START: FlutterFire Configuration
     id("com.google.gms.google-services")
     // END: FlutterFire Configuration

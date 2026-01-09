@@ -6,9 +6,11 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'firebase_options.dart';
+import 'package:flutter_config/flutter_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await FlutterConfig.loadEnvVariables();
   
   // Initialize Firebase
   await Firebase.initializeApp(
@@ -25,10 +27,10 @@ void main() async {
   );
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  // Initialize AppConfig using dart-define values
+  // Initialize AppConfig using .env values via FlutterConfig
   AppConfig.init({
-    'apiBaseUrl': const String.fromEnvironment('apiBaseUrl'),
-    'environment': const String.fromEnvironment('environment'),
+    'apiBaseUrl': FlutterConfig.get('API_BASE_URL'),
+    'environment': FlutterConfig.get('ENVIRONMENT'),
   });
 
   runApp(

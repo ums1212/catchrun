@@ -23,6 +23,24 @@
     - `InkWell`을 적용하여 이미지 클릭 시에도 시각적 피드백과 함께 로그인 로직이 정상 작동하도록 구현
     - 버튼 높이를 56px로 고정하여 기존 레이아웃과의 일관성 유지
 
+### 🚀 보안 강화 및 환경 변수 관리 도입 (Security & Config Enhancement)
+
+#### ✅ 주요 작업 및 성과
+- **`flutter_config` 패키지 도입 및 설정**
+    - API Key, `apiBaseUrl`, `environment` 등 민감 정보와 환경 설정을 `.env` 파일로 통합 관리
+    - `pubspec.yaml`, Android (`build.gradle.kts`), iOS (`AppDelegate.swift`)에 필요한 Native 설정 적용
+- **Firebase API Key 보호 및 연동**
+    - `firebase_options.dart`: 하드코딩된 API Key를 `FlutterConfig.get()` 호출로 대체하여 보안성 확보
+    - `main.dart`: 앱 시작 시 `FlutterConfig.loadEnvVariables()` 호출 및 `AppConfig` 초기화 로직을 `.env` 기반으로 전환
+- **Git 히스토리 정화 (Security Scrubbing)**
+    - `git filter-repo`를 사용하여 이전 커밋 히스토리에 노출된 모든 API Key 문자열을 영구적으로 제거 및 치환
+- **보안 가이드 수립**
+    - `.env.example` 템플릿 제공을 통해 협업 환경에서 필요한 환경 변수 구성 안내
+
+#### 📝 비고 / 특이사항
+- **주의 사항**: 히스토리 정화 후 원격 저장소에 `force push`가 이루어졌으며, 팀원들은 로컬 저장소를 재설정하거나 최신 히스토리로 덮어써야 함.
+- **향후 계획**: 새로운 민감 정보(예: 결제 키, 외부 API API Key) 추가 시 항상 `.env`를 최우선으로 사용할 것.
+
 ---
 
 ## 2026-01-09 (금)
