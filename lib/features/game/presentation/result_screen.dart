@@ -26,11 +26,11 @@ class ResultScreen extends ConsumerWidget {
           return participantsAsync.when(
             data: (participants) => _buildResultContent(context, game, participants),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, stack) => Center(child: Text('Error: $err')),
+            error: (err, stack) => Center(child: Text('오류: $err')),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        error: (err, stack) => Center(child: Text('오류: $err')),
       ),
     );
   }

@@ -389,7 +389,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                                     ),
                                     const SizedBox(height: 8),
                                     _HudText(
-                                      'SECRET KEY: ${game.inviteCode}',
+                                      '초대 코드: ${game.inviteCode}',
                                       fontSize: 14,
                                       color: Colors.white54,
                                       fontWeight: FontWeight.normal,
@@ -493,7 +493,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                                                           borderRadius: BorderRadius.circular(4),
                                                           border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.4)),
                                                         ),
-                                                        child: const _HudText('YOU', fontSize: 10, color: Colors.cyanAccent),
+                                                        child: const _HudText('본인', fontSize: 10, color: Colors.cyanAccent),
                                                       ),
                                                     ],
                                                   ],
@@ -599,8 +599,8 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                                               mainAxisAlignment: MainAxisAlignment.center,
                                               children: [
                                                 Icon(Icons.nfc_rounded, color: Colors.cyanAccent, size: 20),
-                                                const SizedBox(width: 8),
-                                                const _HudText('보안 열쇠(NFC) 등록', color: Colors.cyanAccent),
+                                                SizedBox(width: 8),
+                                                _HudText('보안 열쇠(NFC) 등록', color: Colors.cyanAccent),
                                               ],
                                             ),
                                           ),

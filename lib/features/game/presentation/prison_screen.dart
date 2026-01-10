@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -28,62 +29,96 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
     if (availability != NfcAvailability.enabled) {
       if (!mounted) return;
 
-
-      showDialog(
+      showGeneralDialog(
         context: context,
-        builder: (innerContext) => AlertDialog(
-          title: const Text('NFC 기능 비활성화'),
-          content: const Text('NFC 기능이 꺼져 있거나 지원되지 않는 기기입니다. 설정에서 NFC를 활성화해 주세요.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(innerContext),
-              child: const Text('취소'),
+        barrierDismissible: true,
+        barrierLabel: 'NfcDisabledDialog',
+        pageBuilder: (context, _, __) => Center(
+          child: _GlassContainer(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const _HudText('NFC 비활성', fontSize: 18, color: Colors.redAccent),
+                const SizedBox(height: 16),
+                const _HudText(
+                  'NFC 기능이 꺼져 있거나 지원되지 않습니다.\n시스템 설정에서 활성화해 주세요.',
+                  fontWeight: FontWeight.normal,
+                  fontSize: 12,
+                  color: Colors.white70,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _SciFiButton(
+                        text: '취소',
+                        height: 45,
+                        fontSize: 14,
+                        isOutlined: true,
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _SciFiButton(
+                        text: '설정',
+                        height: 45,
+                        fontSize: 14,
+                        onPressed: () async {
+                          await AppSettings.openAppSettings(type: AppSettingsType.nfc);
+                          if (context.mounted) Navigator.pop(context);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: () async {
-                await AppSettings.openAppSettings(type: AppSettingsType.nfc);
-                if (innerContext.mounted) {
-                  Navigator.pop(innerContext);
-                }
-              },
-              child: const Text('설정으로 이동'),
-            ),
-          ],
+          ),
         ),
       );
       return;
     }
 
     setState(() => _isScanning = true);
-    
     if (!mounted) return;
 
-
-    showDialog(
+    showGeneralDialog(
       context: context,
       barrierDismissible: false,
-
-
-      builder: (context) => AlertDialog(
-        title: const Text('NFC 열쇠 사용'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.nfc, size: 64, color: Colors.orange),
-            SizedBox(height: 16),
-            Text('등록된 NFC 열쇠를 기기 뒷면에 접촉해 주세요.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              NfcManager.instance.stopSession();
-              Navigator.pop(context);
-              setState(() => _isScanning = false);
-            },
-            child: const Text('취소'),
+      barrierLabel: 'NfcScanDialog',
+      pageBuilder: (context, _, __) => Center(
+        child: _GlassContainer(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.nfc, size: 64, color: Colors.orangeAccent),
+              const SizedBox(height: 24),
+              const _HudText('열쇠 스캔 중', fontSize: 18, color: Colors.orangeAccent),
+              const SizedBox(height: 16),
+              const _HudText(
+                '등록된 NFC 열쇠를\n기기 뒷면에 인식시켜 주세요.',
+                fontWeight: FontWeight.normal,
+                fontSize: 12,
+                color: Colors.white70,
+              ),
+              const SizedBox(height: 32),
+              _SciFiButton(
+                text: '중단',
+                height: 45,
+                fontSize: 14,
+                isOutlined: true,
+                onPressed: () {
+                  NfcManager.instance.stopSession();
+                  Navigator.pop(context);
+                  setState(() => _isScanning = false);
+                },
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
 
@@ -104,7 +139,7 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
         final scannedId = String.fromCharCodes(record.payload.sublist(1 + languageCodeLength));
 
         final currentUser = ref.read(userProvider).value;
-        if (currentUser == null) throw Exception('사용자 정보를 찾을 수 없습니다.');
+        if (currentUser == null) throw Exception('User authentication lost.');
 
         await ref.read(gameRepositoryProvider).usePrisonKey(
           gameId: widget.gameId,
@@ -115,10 +150,10 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
         await NfcManager.instance.stopSession();
         
         if (!mounted) return;
-        Navigator.pop(context); // 다이얼로그 닫기
+        Navigator.pop(context);
         setState(() => _isScanning = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('탈출 성공!')),
+          const SnackBar(content: Text('탈출 성공!'), backgroundColor: Colors.green),
         );
 
       } catch (e) {
@@ -127,9 +162,8 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
         Navigator.pop(context);
         setState(() => _isScanning = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('탈출 실패: $e')),
+          SnackBar(content: Text('탈출 실패: $e'), backgroundColor: Colors.red),
         );
-
       }
     });
   }
@@ -143,7 +177,10 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
       stream: gameAsync,
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(child: CircularProgressIndicator(color: Colors.redAccent)),
+          );
         }
 
         final game = snapshot.data!;
@@ -158,7 +195,6 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
               orElse: () => ParticipantModel(uid: '', nicknameSnapshot: '', joinedAt: DateTime.now(), stats: ParticipantStats()),
             );
 
-            // 석방 감지 시 다시 플레이 화면으로
             if (myParticipant.state == RobberState.free && myParticipant.uid.isNotEmpty) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (context.mounted && !_isScanning) {
@@ -170,102 +206,126 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
             final qrData = 'catchrun:${game.id}:${currentUser?.uid}';
 
             return Scaffold(
-          backgroundColor: Colors.grey[900],
-          body: SafeArea(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(),
-                const Icon(
-                  Icons.lock_person,
-                  size: 80,
-                  color: Colors.redAccent,
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  '현재 수감되었습니다!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 40),
-                  child: Text(
-                    '지정된 감옥 위치에 머물러야 하며, 이동이 불가합니다. 동료가 QR 코드를 스캔해주면 석방될 수 있습니다.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-                ),
-                const Spacer(),
-                
-                // 내 QR 코드
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: QrImageView(
-                    data: qrData,
-                    version: QrVersions.auto,
-                    size: 240.0,
-                    gapless: false,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  '식별용 QR 코드 (체포/구출)',
-                  style: TextStyle(
-
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                
-                const SizedBox(height: 32),
-                
-                // NFC 열쇠 사용 버튼
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 48),
-                  child: ElevatedButton.icon(
-                    onPressed: _useNfcKey,
-                    icon: const Icon(Icons.vpn_key),
-                    label: const Text('NFC 열쇠로 직접 탈출'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(56),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                  ),
-                ),
-                
-                const Spacer(),
-                
-                // 게임 정보 요약
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  margin: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+              backgroundColor: Colors.black,
+              body: OrientationBuilder(
+                builder: (context, orientation) {
+                  return Stack(
                     children: [
-                      _buildStatItem('남은 도둑', '${game.counts.robbersFree}', Colors.greenAccent),
-                      _buildStatItem('수감 인원', '${game.counts.robbersJailed}', Colors.redAccent),
+                      Positioned.fill(
+                        child: Image.asset(
+                          orientation == Orientation.portrait
+                              ? 'assets/image/profile_setting_portrait.png'
+                              : 'assets/image/profile_setting_landscape.png',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.85),
+                                Colors.redAccent.withValues(alpha: 0.1),
+                                Colors.black.withValues(alpha: 0.9),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      SafeArea(
+                        child: Column(
+                          children: [
+                            const Spacer(),
+                            const Icon(
+                              Icons.lock_person_rounded,
+                              size: 100,
+                              color: Colors.redAccent,
+                              shadows: [
+                                Shadow(color: Colors.redAccent, blurRadius: 20),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            const _HudText(
+                              '수감 상태 활성',
+                              fontSize: 32,
+                              color: Colors.redAccent,
+                              letterSpacing: 2,
+                            ),
+                            const SizedBox(height: 16),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 48),
+                              child: _HudText(
+                                '지정된 장소에서 대기하세요.\n동료가 당신의 ID를 스캔하면 석방됩니다.',
+                                fontWeight: FontWeight.normal,
+                                fontSize: 13,
+                                color: Colors.white70,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            const Spacer(),
+                            
+                            _GlassContainer(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: QrImageView(
+                                      data: qrData,
+                                      version: QrVersions.auto,
+                                      size: 200.0,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const _HudText(
+                                    '신원 식별 코드',
+                                    fontSize: 14,
+                                    color: Colors.white70,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 40),
+                            
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 48),
+                              child: _SciFiButton(
+                                text: 'NFC 마스터키 사용',
+                                icon: Icons.vpn_key_rounded,
+                                onPressed: _useNfcKey,
+                              ),
+                            ),
+                            
+                            const Spacer(),
+                            
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                              child: _GlassContainer(
+                                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _buildStatItem('활동 요원', '${game.counts.robbersFree}', Colors.greenAccent),
+                                    _buildStatItem('수감 인원', '${game.counts.robbersJailed}', Colors.redAccent),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
+                  );
+                },
+              ),
+            );
           },
         );
       },
@@ -275,17 +335,226 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
   Widget _buildStatItem(String label, String value, Color color) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 13)),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
+        _HudText(label, fontSize: 10, color: Colors.white.withValues(alpha: 0.5), fontWeight: FontWeight.normal),
+        const SizedBox(height: 8),
+        _HudText(value, fontSize: 24, color: color),
       ],
     );
   }
+}
+
+// HUD WIDGETS
+class _HudText extends StatelessWidget {
+  final String text;
+  final double fontSize;
+  final Color color;
+  final double letterSpacing;
+  final FontWeight fontWeight;
+
+  const _HudText(
+    this.text, {
+    this.fontSize = 14,
+    this.color = Colors.white,
+    this.letterSpacing = 1.0,
+    this.fontWeight = FontWeight.bold,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: fontSize,
+        color: color,
+        fontWeight: fontWeight,
+        letterSpacing: letterSpacing,
+        shadows: [
+          Shadow(
+            color: color.withValues(alpha: 0.5),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GlassContainer extends StatelessWidget {
+  final Widget child;
+  final EdgeInsets padding;
+
+  const _GlassContainer({
+    required this.child,
+    this.padding = const EdgeInsets.all(20),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 1.5,
+            ),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _SciFiButton extends StatelessWidget {
+  final String text;
+  final VoidCallback onPressed;
+  final IconData? icon;
+  final bool isOutlined;
+  final double height;
+  final double fontSize;
+
+  const _SciFiButton({
+    required this.text,
+    required this.onPressed,
+    this.icon,
+    this.isOutlined = false,
+    this.height = 60,
+    this.fontSize = 18,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: double.infinity,
+        height: height,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: isOutlined
+              ? null
+              : const LinearGradient(
+                  colors: [Colors.blueAccent, Colors.redAccent],
+                ),
+          color: isOutlined ? Colors.black.withValues(alpha: 0.4) : null,
+          border: isOutlined
+              ? _GradientBorder(
+                  width: 1.5,
+                  gradient: const LinearGradient(
+                    colors: [Colors.blueAccent, Colors.redAccent],
+                  ),
+                )
+              : null,
+          boxShadow: isOutlined
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.blueAccent.withValues(alpha: 0.4),
+                    blurRadius: 15,
+                    offset: const Offset(-5, 0),
+                  ),
+                  BoxShadow(
+                    color: Colors.redAccent.withValues(alpha: 0.4),
+                    blurRadius: 15,
+                    offset: const Offset(5, 0),
+                  ),
+                ],
+        ),
+        alignment: Alignment.center,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (!isOutlined)
+                  Positioned(
+                    top: 2,
+                    left: 10,
+                    right: 10,
+                    child: Container(
+                      height: 1,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.white.withValues(alpha: 0.0),
+                            Colors.white.withValues(alpha: 0.3),
+                            Colors.white.withValues(alpha: 0.0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (icon != null) ...[
+                      Icon(icon, color: Colors.white, size: fontSize + 4),
+                      const SizedBox(width: 12),
+                    ],
+                    _HudText(
+                      text,
+                      fontSize: fontSize,
+                      letterSpacing: 2,
+                      color: Colors.white,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GradientBorder extends BoxBorder {
+  final Gradient gradient;
+  final double width;
+
+  const _GradientBorder({required this.gradient, this.width = 1.0});
+
+  @override
+  EdgeInsetsGeometry get dimensions => EdgeInsets.all(width);
+
+  @override
+  bool get isUniform => true;
+
+  @override
+  void paint(
+    Canvas canvas,
+    Rect rect, {
+    BoxShape shape = BoxShape.rectangle,
+    BorderRadius? borderRadius,
+    TextDirection? textDirection,
+  }) {
+    final Paint paint = Paint()
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..shader = gradient.createShader(rect);
+
+    if (borderRadius != null) {
+      canvas.drawRRect(borderRadius.toRRect(rect).deflate(width / 2), paint);
+    } else {
+      canvas.drawRect(rect.deflate(width / 2), paint);
+    }
+  }
+
+  @override
+  ShapeBorder scale(double t) =>
+      _GradientBorder(gradient: gradient, width: width * t);
+
+  @override
+  BorderSide get bottom => BorderSide.none;
+  @override
+  BorderSide get top => BorderSide.none;
 }
