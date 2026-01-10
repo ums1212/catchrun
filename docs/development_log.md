@@ -18,8 +18,11 @@
 ### 🚀 게임 실행 화면 UI 리디자인 (Game Play Screens UI Redesign)
 
 #### ✅ 주요 작업 및 성과
-- **게임 플레이 화면(`PlayScreen`), 수감 화면(`PrisonScreen`), QR 스캔 화면(`QrScanScreen`) 리디자인**
+- **게임 플레이 화면(`PlayScreen`), 수감 화면(`PrisonScreen`), QR 스캔 화면(`QrScanScreen`), 결과 화면(`ResultScreen`) 리디자인**
     - **일관된 HUD 테마**: 홈 및 로비 화면에서 구축된 Futuristic, Neon, Glassmorphism 스타일을 플레이 관련 모든 화면으로 확산
+    - **결과 화면(`ResultScreen`)**:
+        - 승리 진영에 따라 블루/레드 네온 액센트가 적용된 대형 트로피 배너와 HUD 스타일 순위표 구현
+        - 특별 칭호(MVP, 검거왕 등)를 유리 질감 패널에 담아 시각적 주목도 향상
     - **플레이 화면(`PlayScreen`)**: 
         - 상단 중앙에 강렬한 네온 HUD 타이머를 배치하여 실시간 긴박감 극대화
         - 하단에 글래스모피즘 상태 보드와 블루-레드 그라데이션이 적용된 SciFi 액션 버튼 구현
@@ -28,7 +31,6 @@
         - NFC 관련 모든 안내 및 스캔 창을 글래스모피즘 기반 커스텀 다이얼로그로 통합
     - **QR 스캔 화면(`QrScanScreen`)**:
         - 카메라 화면 위에 정밀한 네온 가이드 프레임과 코너 액센트를 오버레이하여 미래 장비 조작 느낌 구현
-    - **주요 게임 화면 한국어 현지화**: `PlayScreen`, `PrisonScreen`, `QrScanScreen`, `LobbyScreen`의 모든 텍스트를 HUD 테마에 맞춰 한국어로 번역 및 최적화
         - 하단 안내 패널에 블러 효과가 적용된 글래스 컨테이너를 배치하여 시인성 및 현대적 미학 확보
 
 ### 🚀 로비 화면 UI 리디자인 (Lobby Screen UI Redesign)
