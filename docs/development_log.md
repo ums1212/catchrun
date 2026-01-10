@@ -18,11 +18,15 @@
 ### 🚀 프로필 설정 화면 UI 고도화 (Onboarding Screen UI Polish)
 
 #### ✅ 주요 작업 및 성과
-- **화면 회전 대응 배경 이미지 구현**
-    - `OrientationBuilder`를 활용하여 가로/세로 모드에 최적화된 배경 이미지(`profile_setting_portrait.png`, `profile_setting_landscape.png`) 자동 전환 로직 구현
-    - `BoxFit.cover` 적용으로 이미지 왜곡 없이 화면 전체를 채우는 최적의 배경 비율 설정
-- **투명 App Bar 적용**
-    - 배경 이미지가 상단 바 영역까지 확장되도록 `extendBodyBehindAppBar: true` 및 `AppBar` 배경 투명화 설정
+- **프로필 설정 화면(Onboarding Screen) HUD 스타일 전면 개편**
+    - **디자인 테마**: Futuristic, Neon, Glassmorphism, Cyber Sport 컨셉을 적용하여 게임 로비와 같은 몰입감 있는 UI 구축
+    - **핵심 기술**: `BackdropFilter`를 사용한 Glassmorphism 패널, `LinearGradient` 및 `BoxShadow`를 활용한 Neon Glow 효과, `AnimatedContainer` 기반의 Floating 애니메이션 적용
+    - **컴포넌트 고도화**:
+        - 아바타: 원형 Glass 패널과 외곽의 네온 링, 플로팅 효과가 적용된 아바타 영역 구현
+        - 텍스트 필드: 그라데이션 네온 테두리와 반투명 배경이 적용된 HUD 스타일 입력 필드 적용
+        - 시작하기 버튼: 블루-레드 그라데이션과 강력한 외곽 광원 효과가 적용된 '미션 시작' 버튼 구현
+    - **사용자 경험(UX) 최적화**: 모든 영문 HUD 텍스트의 한국어화 및 게임 HUD 타이포그래피 스타일(자간 조정 등) 적용
+    - **레이아웃 수정**: 배경 이미지 하단 공백 방지를 위한 레이아웃 제약 추가 및 가독성 향상을 위한 배경 오버레이 농도 조정
 
 ### 🚀 로그인 화면 디자인 고도화 (Login Screen UI Polish)
 

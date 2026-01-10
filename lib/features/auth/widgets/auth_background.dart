@@ -28,7 +28,7 @@ class AuthBackground extends StatelessWidget {
         ),
         // 배경 가독성을 위한 오버레이
         Container(
-          color: Colors.black.withOpacity(0.4),
+          color: Colors.black.withValues(alpha: 0.4),
         ),
         // 실제 콘텐츠
         child,
