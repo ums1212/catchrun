@@ -15,6 +15,40 @@
 
 ## 2026-01-10 (토)
 
+### 🧹 코드 품질 개선: 공통 위젯 리팩토링 (Common Widget Refactoring)
+
+#### ✅ 주요 작업 및 성과
+- **공통 위젯 추출 및 통합**
+    - 8개 화면에서 중복되는 UI 컴포넌트를 `lib/core/widgets`로 추출하여 코드 재사용성 극대화
+    - **추출된 위젯**: `HudText`, `GlassContainer`, `SciFiButton`, `GradientBorder`, `HudSectionHeader`, `ParticipantCounter`
+    - 각 화면에서 로컬로 정의되었던 동일 위젯(예: `_HudText`, `_GlassContainer`)을 공통 위젯으로 전면 교체
+- **Screen 파일 내 로컬 위젯 분리**
+    - screen 파일에 포함되어 있던 로컬 위젯 클래스 6개를 별도 파일로 분리하여 코드 구조 명확화
+    - **onboarding 위젯** (`lib/features/onboarding/widgets/`):
+        - `FloatingWidget`: 플로팅 애니메이션 래퍼
+        - `GlassAvatar`: 글래스모피즘 스타일 아바타
+        - `NeonIconButton`: 네온 스타일 아이콘 버튼
+        - `OnboardingTextField`: 온보딩 전용 텍스트 필드
+    - **game 위젯** (`lib/features/game/presentation/widgets/`):
+        - `QrScanOverlay`: QR 스캔 화면 오버레이
+    - `onboarding_screen.dart`: 397 → 176 라인 (55% 감소, 221 라인 제거)
+    - `join_game_screen.dart`: 436 → 361 라인 (17% 감소, 75 라인 제거)
+- **Lint 이슈 완전 해결**
+    - 9개의 마이너 lint 이슈(미사용 import, deprecated API 사용 등)를 모두 수정
+    - `withOpacity()` deprecated → `withValues(alpha: ...)` 최신 API로 전환
+    - `ParticipantCounter` 위젯 생성하여 누락된 컴포넌트 해결
+    - **최종 결과**: `flutter analyze` 실행 시 **No issues found!** 달성
+
+#### 📝 비고 / 특이사항
+- **디렉토리 구조 정립**:
+    - `lib/core/widgets/`: 앱 전체에서 사용하는 범용 공통 위젯
+    - `lib/features/[feature]/widgets/`: 특정 feature에만 사용되는 전용 위젯
+    - 이러한 구조는 관심사의 분리와 추후 모듈화에 유리
+- **코드 품질 향상**:
+    - 총 300+ 라인의 중복 위젯 정의 제거
+    - 모든 화면에서 일관된 디자인 시스템 적용 가능
+    - 위젯 수정 시 한 곳만 변경하면 전체 앱에 반영되어 유지보수성 대폭 향상
+
 ### 🚀 게임 실행 화면 UI 리디자인 (Game Play Screens UI Redesign)
 
 #### ✅ 주요 작업 및 성과

@@ -14,6 +14,11 @@ import 'package:app_settings/app_settings.dart';
 import 'dart:typed_data';
 import 'dart:convert';
 
+import 'package:catchrun/core/widgets/hud_text.dart';
+import 'package:catchrun/core/widgets/glass_container.dart';
+import 'package:catchrun/core/widgets/scifi_button.dart';
+import 'package:catchrun/core/widgets/hud_section_header.dart';
+
 import '../../../core/models/game_model.dart';
 
 class LobbyScreen extends ConsumerStatefulWidget {
@@ -75,25 +80,25 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
       barrierDismissible: true,
       barrierLabel: 'ExitDialog',
       pageBuilder: (context, _, __) => Center(
-        child: _GlassContainer(
+        child: GlassContainer(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const _HudText('게임 나가기', fontSize: 20, color: Colors.cyanAccent),
+              const HudText('게임 나가기', fontSize: 20, color: Colors.cyanAccent),
               const SizedBox(height: 16),
-              const _HudText('대기방에서 나가시겠습니까?', fontWeight: FontWeight.normal),
+              const HudText('대기방에서 나가시겠습니까?', fontWeight: FontWeight.normal),
               const SizedBox(height: 32),
               Row(
                 children: [
                   Expanded(
                     child: TextButton(
                       onPressed: () => Navigator.pop(context, false),
-                      child: _HudText('취소', color: Colors.white.withValues(alpha: 0.6)),
+                      child: HudText('취소', color: Colors.white.withValues(alpha: 0.6)),
                     ),
                   ),
                   Expanded(
-                    child: _SciFiButton(
+                    child: SciFiButton(
                       text: '나가기',
                       height: 45,
                       fontSize: 14,
@@ -124,14 +129,14 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
           barrierDismissible: true,
           barrierLabel: 'NfcDisabledDialog',
           pageBuilder: (context, _, __) => Center(
-            child: _GlassContainer(
+            child: GlassContainer(
               padding: const EdgeInsets.all(24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const _HudText('NFC 기능 비활성화', fontSize: 18, color: Colors.redAccent),
+                  const HudText('NFC 기능 비활성화', fontSize: 18, color: Colors.redAccent),
                   const SizedBox(height: 16),
-                  const _HudText(
+                  const HudText(
                     'NFC 기능이 꺼져 있거나 지원되지 않는 기기입니다. 설정에서 NFC를 활성화해 주세요.',
                     fontWeight: FontWeight.normal,
                     fontSize: 14,
@@ -142,11 +147,11 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                       Expanded(
                         child: TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: _HudText('취소', color: Colors.white.withValues(alpha: 0.6)),
+                          child: HudText('취소', color: Colors.white.withValues(alpha: 0.6)),
                         ),
                       ),
                       Expanded(
-                        child: _SciFiButton(
+                        child: SciFiButton(
                           text: '설정 이동',
                           height: 45,
                           fontSize: 14,
@@ -175,12 +180,12 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
       barrierDismissible: false,
       barrierLabel: 'NfcRegisterDialog',
       pageBuilder: (context, _, __) => Center(
-        child: _GlassContainer(
+        child: GlassContainer(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const _HudText('NFC 열쇠 등록', fontSize: 20, color: Colors.cyanAccent),
+              const HudText('NFC 열쇠 등록', fontSize: 20, color: Colors.cyanAccent),
               const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.all(20),
@@ -192,9 +197,9 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                 child: const Icon(Icons.nfc, size: 48, color: Colors.cyanAccent),
               ),
               const SizedBox(height: 24),
-              const _HudText('빈 NFC 카드를 기기 뒷면에 접촉해 주세요.', fontWeight: FontWeight.normal),
+              const HudText('빈 NFC 카드를 기기 뒷면에 접촉해 주세요.', fontWeight: FontWeight.normal),
               const SizedBox(height: 8),
-              _HudText(
+              HudText(
                 '이 게임의 전용 열쇠 ID가 기록됩니다.',
                 fontSize: 12,
                 color: Colors.white.withValues(alpha: 0.5),
@@ -208,7 +213,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                     NfcManager.instance.stopSession();
                     Navigator.pop(context);
                   },
-                  child: _HudText('등록 취소', color: Colors.white.withValues(alpha: 0.6)),
+                  child: HudText('등록 취소', color: Colors.white.withValues(alpha: 0.6)),
                 ),
               ),
             ],
@@ -242,7 +247,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 backgroundColor: Colors.cyanAccent.withValues(alpha: 0.8),
-                content: const _HudText('NFC 열쇠 등록 성공!', color: Colors.black),
+                content: const HudText('NFC 열쇠 등록 성공!', color: Colors.black),
               ),
             );
           }
@@ -253,7 +258,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 backgroundColor: Colors.redAccent,
-                content: _HudText('오류 발생: $e'),
+                content: HudText('오류 발생: $e'),
               ),
             );
           }
@@ -287,7 +292,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
           if (game == null) {
             return const Scaffold(
               backgroundColor: Colors.black,
-              body: Center(child: _HudText('게임을 찾을 수 없습니다.', color: Colors.redAccent)),
+              body: Center(child: HudText('게임을 찾을 수 없습니다.', color: Colors.redAccent)),
             );
           }
 
@@ -297,7 +302,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             });
             return const Scaffold(
               backgroundColor: Colors.black,
-              body: Center(child: _HudText('미션 시작!', fontSize: 24, color: Colors.cyanAccent)),
+              body: Center(child: HudText('미션 시작!', fontSize: 24, color: Colors.cyanAccent)),
             );
           }
 
@@ -307,7 +312,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     backgroundColor: Colors.redAccent,
-                    content: const _HudText('게임을 찾을 수 없거나 종료되었습니다.'),
+                    content: const HudText('게임을 찾을 수 없거나 종료되었습니다.'),
                   ),
                 );
                 Navigator.of(context).popUntil((route) => route.isFirst);
@@ -315,7 +320,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             });
             return const Scaffold(
               backgroundColor: Colors.black,
-              body: Center(child: _HudText('본부로 복귀 중...', fontSize: 18)),
+              body: Center(child: HudText('본부로 복귀 중...', fontSize: 18)),
             );
           }
 
@@ -323,7 +328,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             extendBodyBehindAppBar: true,
             backgroundColor: Colors.black,
             appBar: AppBar(
-              title: const _HudText(
+              title: const HudText(
                 '전투 대기실',
                 fontSize: 20,
                 letterSpacing: 2,
@@ -375,20 +380,20 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                           children: [
                             Padding(
                               padding: const EdgeInsets.all(16.0),
-                              child: _GlassContainer(
+                              child: GlassContainer(
                                 padding: const EdgeInsets.all(24),
                                 child: Column(
                                   children: [
-                                    const _HudText('미션 식별 코드', fontSize: 12, color: Colors.white70),
+                                    const HudText('미션 식별 코드', fontSize: 12, color: Colors.white70),
                                     const SizedBox(height: 8),
-                                    _HudText(
+                                    HudText(
                                       game.gameCode,
                                       fontSize: 32,
                                       letterSpacing: 6,
                                       color: Colors.cyanAccent,
                                     ),
                                     const SizedBox(height: 8),
-                                    _HudText(
+                                    HudText(
                                       '초대 코드: ${game.inviteCode}',
                                       fontSize: 14,
                                       color: Colors.white54,
@@ -421,7 +426,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                             ),
                             const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 16),
-                              child: _HudSectionHeader(title: '참여 목록'),
+                              child: HudSectionHeader(title: '참여 목록'),
                             ),
                             Expanded(
                               child: StreamBuilder(
@@ -483,7 +488,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                                                 ),
                                                 title: Row(
                                                   children: [
-                                                    _HudText(p.nicknameSnapshot, fontSize: 16),
+                                                    HudText(p.nicknameSnapshot, fontSize: 16),
                                                     if (isCurrentUser) ...[
                                                       const SizedBox(width: 8),
                                                       Container(
@@ -493,12 +498,12 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                                                           borderRadius: BorderRadius.circular(4),
                                                           border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.4)),
                                                         ),
-                                                        child: const _HudText('본인', fontSize: 10, color: Colors.cyanAccent),
+                                                        child: const HudText('본인', fontSize: 10, color: Colors.cyanAccent),
                                                       ),
                                                     ],
                                                   ],
                                                 ),
-                                                subtitle: _HudText(
+                                                subtitle: HudText(
                                                   isCop ? 'TACTICAL UNIT (POLICE)' : 'TARGET VESSEL (ROBBER)',
                                                   fontSize: 10,
                                                   color: isCop ? Colors.blueAccent : Colors.redAccent,
@@ -530,7 +535,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                                   child: Column(
                                     children: [
                                       if (isHost) ...[
-                                        _SciFiButton(
+                                        SciFiButton(
                                           text: '미션 개시',
                                           height: 54,
                                           fontSize: 18,
@@ -542,20 +547,20 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                                                 barrierDismissible: true,
                                                 barrierLabel: 'ConfigErrorDialog',
                                                 pageBuilder: (context, _, __) => Center(
-                                                  child: _GlassContainer(
+                                                  child: GlassContainer(
                                                     padding: const EdgeInsets.all(24),
                                                     child: Column(
                                                       mainAxisSize: MainAxisSize.min,
                                                       children: [
-                                                        const _HudText('인원 설정 불일치', fontSize: 18, color: Colors.orangeAccent),
+                                                        const HudText('인원 설정 불일치', fontSize: 18, color: Colors.orangeAccent),
                                                         const SizedBox(height: 16),
-                                                        _HudText(
+                                                        HudText(
                                                           '설정된 경찰(${game.rule.copsCount}명)과 현재 배정된 인원($currentCops명)이 다릅니다.\n작전 조율이 필요합니다.',
                                                           fontWeight: FontWeight.normal,
                                                           fontSize: 14,
                                                         ),
                                                         const SizedBox(height: 24),
-                                                        _SciFiButton(
+                                                        SciFiButton(
                                                           text: '확인',
                                                           height: 45,
                                                           fontSize: 14,
@@ -576,7 +581,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                                                 ScaffoldMessenger.of(context).showSnackBar(
                                                   SnackBar(
                                                     backgroundColor: Colors.redAccent,
-                                                    content: _HudText('미션 개시 실패: $e'),
+                                                    content: HudText('미션 개시 실패: $e'),
                                                   ),
                                                 );
                                               }
@@ -600,16 +605,16 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                                               children: [
                                                 Icon(Icons.nfc_rounded, color: Colors.cyanAccent, size: 20),
                                                 SizedBox(width: 8),
-                                                _HudText('보안 열쇠(NFC) 등록', color: Colors.cyanAccent),
+                                                HudText('보안 열쇠(NFC) 등록', color: Colors.cyanAccent),
                                               ],
                                             ),
                                           ),
                                         ),
                                       ] else ...[
-                                        _GlassContainer(
+                                        GlassContainer(
                                           padding: const EdgeInsets.symmetric(vertical: 16),
                                           child: const Center(
-                                            child: _HudText(
+                                            child: HudText(
                                               '작전 개시 대기 중...',
                                               color: Colors.cyanAccent,
                                               letterSpacing: 2,
@@ -663,9 +668,9 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _HudText('${p.nicknameSnapshot} 역할 변경', fontSize: 18, color: Colors.cyanAccent),
+                  HudText('${p.nicknameSnapshot} 역할 변경', fontSize: 18, color: Colors.cyanAccent),
                   const SizedBox(height: 8),
-                  const _HudText('역할을 변경합니다.', fontSize: 12, fontWeight: FontWeight.normal, color: Colors.white54),
+                  const HudText('역할을 변경합니다.', fontSize: 12, fontWeight: FontWeight.normal, color: Colors.white54),
                   const SizedBox(height: 24),
                   ListTile(
                     leading: Container(
@@ -679,7 +684,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                       alignment: Alignment.center,
                       child: const Text('👮', style: TextStyle(fontSize: 20)),
                     ),
-                    title: const _HudText('TACTICAL UNIT (경찰)'),
+                    title: const HudText('TACTICAL UNIT (경찰)'),
                     onTap: () async {
                       await ref.read(gameRepositoryProvider).updateParticipantRole(
                         gameId: game.id,
@@ -701,7 +706,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                       alignment: Alignment.center,
                       child: const Text('🏃', style: TextStyle(fontSize: 20)),
                     ),
-                    title: const _HudText('TARGET VESSEL (도둑)'),
+                    title: const HudText('TARGET VESSEL (도둑)'),
                     onTap: () async {
                       await ref.read(gameRepositoryProvider).updateParticipantRole(
                         gameId: game.id,
@@ -733,204 +738,6 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
       type: Uint8List.fromList(utf8.encode('T')),
       identifier: Uint8List(0),
       payload: payload,
-    );
-  }
-}
-
-// HUD WIDGETS
-class _HudText extends StatelessWidget {
-  final String text;
-  final double fontSize;
-  final Color color;
-  final double letterSpacing;
-  final FontWeight fontWeight;
-
-  const _HudText(
-    this.text, {
-    this.fontSize = 14,
-    this.color = Colors.white,
-    this.letterSpacing = 1.0,
-    this.fontWeight = FontWeight.bold,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: fontSize,
-        color: color,
-        fontWeight: fontWeight,
-        letterSpacing: letterSpacing,
-        shadows: [
-          Shadow(
-            color: color.withValues(alpha: 0.5),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HudSectionHeader extends StatelessWidget {
-  final String title;
-
-  const _HudSectionHeader({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 16,
-          decoration: BoxDecoration(
-            color: Colors.cyanAccent,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.cyanAccent.withValues(alpha: 0.6),
-                blurRadius: 4,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        _HudText(
-          title,
-          fontSize: 12,
-          color: Colors.cyanAccent.withValues(alpha: 0.9),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Container(
-            height: 1,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.cyanAccent.withValues(alpha: 0.4),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _GlassContainer extends StatelessWidget {
-  final Widget child;
-  final EdgeInsets padding;
-
-  const _GlassContainer({
-    required this.child,
-    this.padding = const EdgeInsets.all(20),
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.1),
-              width: 1.5,
-            ),
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
-class _SciFiButton extends StatelessWidget {
-  final String text;
-  final VoidCallback onPressed;
-  final IconData? icon;
-  final double height;
-  final double fontSize;
-
-  const _SciFiButton({
-    required this.text,
-    required this.onPressed,
-    this.icon,
-    this.height = 60,
-    this.fontSize = 18,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: double.infinity,
-        height: height,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: const LinearGradient(
-            colors: [Colors.blueAccent, Colors.redAccent],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.blueAccent.withValues(alpha: 0.4),
-              blurRadius: 15,
-              offset: const Offset(-5, 0),
-            ),
-            BoxShadow(
-              color: Colors.redAccent.withValues(alpha: 0.4),
-              blurRadius: 15,
-              offset: const Offset(5, 0),
-            ),
-          ],
-        ),
-        alignment: Alignment.center,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Positioned(
-              top: 2,
-              left: 10,
-              right: 10,
-              child: Container(
-                height: 1,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.white.withValues(alpha: 0.0),
-                      Colors.white.withValues(alpha: 0.3),
-                      Colors.white.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, color: Colors.white, size: fontSize + 4),
-                  const SizedBox(width: 12),
-                ],
-                _HudText(
-                  text,
-                  fontSize: fontSize,
-                  letterSpacing: 2,
-                  color: Colors.white,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

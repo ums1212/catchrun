@@ -1,10 +1,12 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
-import 'package:go_router/go_router.dart';
+import 'package:catchrun/core/widgets/hud_text.dart';
+import 'package:catchrun/core/widgets/glass_container.dart';
+import 'package:catchrun/core/widgets/gradient_border.dart';
 
 class QrScanScreen extends ConsumerStatefulWidget {
   final String gameId;
@@ -106,7 +108,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: _HudText(message, fontSize: 13, color: Colors.white),
+        content: HudText(message, fontSize: 13, color: Colors.white),
         backgroundColor: Colors.redAccent.withValues(alpha: 0.8),
         behavior: SnackBarBehavior.floating,
       ),
@@ -117,7 +119,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: _HudText(message, fontSize: 13, color: Colors.white),
+        content: HudText(message, fontSize: 13, color: Colors.white),
         backgroundColor: Colors.greenAccent.withValues(alpha: 0.8),
         behavior: SnackBarBehavior.floating,
       ),
@@ -132,7 +134,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: _HudText(
+        title: HudText(
           widget.isCop ? '스캔: 도둑 체포' : '스캔: 아군 구출',
           color: themeColor,
           fontSize: 18,
@@ -154,7 +156,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
               width: 260,
               height: 260,
               decoration: BoxDecoration(
-                border: _GradientBorder(
+                border: GradientBorder(
                   width: 2,
                   gradient: LinearGradient(
                     colors: [
@@ -221,7 +223,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
                   children: [
                     CircularProgressIndicator(color: themeColor),
                     const SizedBox(height: 20),
-                    _HudText('처리 중...', color: themeColor),
+                    HudText('처리 중...', color: themeColor),
                   ],
                 ),
               ),
@@ -231,16 +233,12 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
             bottom: 60,
             left: 30,
             right: 30,
-            child: _GlassContainer(
+            child: GlassContainer(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: _HudText(
+              child: HudText(
                 widget.isCop ? '대상의 식별 코드를 프레임에 맞추세요' : '아군의 식별 코드를 프레임에 맞추세요',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  letterSpacing: 1,
-                  fontWeight: FontWeight.normal,
-                ),
+                fontSize: 12,
+                fontWeight: FontWeight.normal,
               ),
             ),
           ),
@@ -248,117 +246,4 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
       ),
     );
   }
-}
-
-// HUD WIDGETS
-class _HudText extends StatelessWidget {
-  final String text;
-  final double? fontSize;
-  final Color? color;
-  final double? letterSpacing;
-  final FontWeight? fontWeight;
-  final TextStyle? style;
-
-  const _HudText(
-    this.text, {
-    this.fontSize,
-    this.color,
-    this.letterSpacing,
-    this.fontWeight,
-    this.style,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      textAlign: TextAlign.center,
-      style: (style ?? const TextStyle()).copyWith(
-        fontSize: fontSize ?? style?.fontSize ?? 14,
-        color: color ?? style?.color ?? Colors.white,
-        fontWeight: fontWeight ?? style?.fontWeight ?? FontWeight.bold,
-        letterSpacing: letterSpacing ?? style?.letterSpacing ?? 1.0,
-        shadows: [
-          Shadow(
-            color: (color ?? style?.color ?? Colors.white).withValues(alpha: 0.5),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GlassContainer extends StatelessWidget {
-  final Widget child;
-  final EdgeInsets padding;
-
-  const _GlassContainer({
-    required this.child,
-    this.padding = const EdgeInsets.all(20),
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.1),
-              width: 1.5,
-            ),
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
-class _GradientBorder extends BoxBorder {
-  final Gradient gradient;
-  final double width;
-
-  const _GradientBorder({required this.gradient, this.width = 1.0});
-
-  @override
-  EdgeInsetsGeometry get dimensions => EdgeInsets.all(width);
-
-  @override
-  bool get isUniform => true;
-
-  @override
-  void paint(
-    Canvas canvas,
-    Rect rect, {
-    BoxShape shape = BoxShape.rectangle,
-    BorderRadius? borderRadius,
-    TextDirection? textDirection,
-  }) {
-    final Paint paint = Paint()
-      ..strokeWidth = width
-      ..style = PaintingStyle.stroke
-      ..shader = gradient.createShader(rect);
-
-    if (borderRadius != null) {
-      canvas.drawRRect(borderRadius.toRRect(rect).deflate(width / 2), paint);
-    } else {
-      canvas.drawRect(rect.deflate(width / 2), paint);
-    }
-  }
-
-  @override
-  ShapeBorder scale(double t) =>
-      _GradientBorder(gradient: gradient, width: width * t);
-
-  @override
-  BorderSide get bottom => BorderSide.none;
-  @override
-  BorderSide get top => BorderSide.none;
 }

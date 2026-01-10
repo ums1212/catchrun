@@ -1,11 +1,16 @@
-import 'dart:ui';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:catchrun/core/widgets/hud_text.dart';
+import 'package:catchrun/core/widgets/glass_container.dart';
+import 'package:catchrun/core/widgets/scifi_button.dart';
+import 'package:catchrun/core/widgets/hud_section_header.dart';
+import 'package:catchrun/core/widgets/hud_text_field.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:catchrun/features/game/presentation/widgets/qr_scan_overlay.dart';
 
 class JoinGameScreen extends ConsumerStatefulWidget {
   const JoinGameScreen({super.key});
@@ -99,14 +104,14 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
       pageBuilder: (context, anim1, anim2) => Center(
         child: Material(
           color: Colors.transparent,
-          child: _GlassContainer(
+          child: GlassContainer(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const _HudText('카메라 권한 필요', fontSize: 20, color: Colors.cyanAccent),
+                const HudText('카메라 권한 필요', fontSize: 20, color: Colors.cyanAccent),
                 const SizedBox(height: 16),
-                const _HudText(
+                const HudText(
                   'QR 코드 스캔을 위해 카메라 권한이 필요합니다. 설정 화면에서 권한을 허용해주세요.',
                   fontSize: 14,
                   fontWeight: FontWeight.normal,
@@ -117,11 +122,11 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
                     Expanded(
                       child: TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: _HudText('취소', color: Colors.white.withValues(alpha: 0.6)),
+                        child: HudText('취소', color: Colors.white.withValues(alpha: 0.6)),
                       ),
                     ),
                     Expanded(
-                      child: _SciFiButton(
+                      child: SciFiButton(
                         text: '설정 이동',
                         height: 45,
                         fontSize: 14,
@@ -169,7 +174,7 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 backgroundColor: Colors.redAccent,
-                content: const _HudText('유효하지 않은 QR 코드 형식입니다.'),
+                content: const HudText('유효하지 않은 QR 코드 형식입니다.'),
               ),
             );
             setState(() {
@@ -197,7 +202,7 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.redAccent,
-          content: _HudText('참가 중 오류 발생: $e'),
+          content: HudText('참가 중 오류 발생: $e'),
         ),
       );
         setState(() {
@@ -213,7 +218,7 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const _HudText(
+        title: const HudText(
           '게임 참가',
           fontSize: 20,
           letterSpacing: 2,
@@ -278,9 +283,9 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               const SizedBox(height: 10),
-                              _HudSectionHeader(title: '게임 코드 정보'),
+                              HudSectionHeader(title: '게임 코드 정보'),
                               const SizedBox(height: 24),
-                              _HudTextField(
+                              HudTextField(
                                 controller: _gameCodeController,
                                 labelText: '게임 번호 (9자리)',
                                 hintText: '예: 123456789',
@@ -289,7 +294,7 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
                                     (value?.length != 9) ? '9자리 번호를 입력해주세요.' : null,
                               ),
                               const SizedBox(height: 20),
-                              _HudTextField(
+                              HudTextField(
                                 controller: _inviteCodeController,
                                 labelText: '초대 코드 (6자리)',
                                 hintText: '예: 123456',
@@ -301,7 +306,7 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
                               if (_isLoading)
                                 const Center(child: CircularProgressIndicator(color: Colors.cyanAccent))
                               else
-                                _SciFiButton(
+                                SciFiButton(
                                   text: '게임 참가하기',
                                   icon: Icons.login_rounded,
                                   onPressed: _joinGame,
@@ -317,19 +322,19 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
                             MobileScanner(onDetect: _onDetect),
                           // QR Scan Overlay
                           if (_isScanning)
-                            _QrScanOverlay(),
+                            const QrScanOverlay(),
                           if (_isPermissionDenied && !_isScanning)
                             Center(
-                              child: _GlassContainer(
+                              child: GlassContainer(
                                 padding: const EdgeInsets.all(32),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     const Icon(Icons.camera_alt_outlined, size: 64, color: Colors.cyanAccent),
                                     const SizedBox(height: 24),
-                                    const _HudText('카메라 권한이 거부되었습니다.', fontSize: 16),
+                                    const HudText('카메라 권한이 거부되었습니다.', fontSize: 16),
                                     const SizedBox(height: 32),
-                                    _SciFiButton(
+                                    SciFiButton(
                                       text: '권한 설정 확인',
                                       onPressed: _checkCameraPermission,
                                       height: 50,
@@ -353,374 +358,4 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
       ),
     );
   }
-}
-
-class _QrScanOverlay extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Outer darker area
-        ColorFiltered(
-          colorFilter: ColorFilter.mode(
-            Colors.black.withValues(alpha: 0.5),
-            BlendMode.srcOut,
-          ),
-          child: Stack(
-            children: [
-              Container(
-                decoration: const BoxDecoration(
-                  color: Colors.black,
-                  backgroundBlendMode: BlendMode.dstOut,
-                ),
-              ),
-              Align(
-                alignment: Alignment.center,
-                child: Container(
-                  width: 250,
-                  height: 250,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Neon Frame
-        Align(
-          alignment: Alignment.center,
-          child: Container(
-            width: 250,
-            height: 250,
-            decoration: BoxDecoration(
-              border: _GradientBorder(
-                width: 3,
-                gradient: const LinearGradient(
-                  colors: [Colors.cyanAccent, Colors.blueAccent],
-                ),
-              ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.cyanAccent.withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-          ),
-        ),
-        Positioned(
-          top: MediaQuery.of(context).size.height * 0.2,
-          left: 0,
-          right: 0,
-          child: const Center(
-            child: _HudText(
-              '초대 QR 코드를 스캔하세요',
-              fontSize: 16,
-              color: Colors.cyanAccent,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// REUSING HUD WIDGETS
-class _HudText extends StatelessWidget {
-  final String text;
-  final double fontSize;
-  final Color color;
-  final double letterSpacing;
-  final FontWeight fontWeight;
-
-  const _HudText(
-    this.text, {
-    this.fontSize = 14,
-    this.color = Colors.white,
-    this.letterSpacing = 1.0,
-    this.fontWeight = FontWeight.bold,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: fontSize,
-        color: color,
-        fontWeight: fontWeight,
-        letterSpacing: letterSpacing,
-        shadows: [
-          Shadow(
-            color: color.withValues(alpha: 0.5),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HudSectionHeader extends StatelessWidget {
-  final String title;
-
-  const _HudSectionHeader({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 16,
-          decoration: BoxDecoration(
-            color: Colors.cyanAccent,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.cyanAccent.withValues(alpha: 0.6),
-                blurRadius: 4,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        _HudText(
-          title,
-          fontSize: 12,
-          color: Colors.cyanAccent.withValues(alpha: 0.9),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Container(
-            height: 1,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.cyanAccent.withValues(alpha: 0.4),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _GlassContainer extends StatelessWidget {
-  final Widget child;
-  final EdgeInsets padding;
-
-  const _GlassContainer({
-    required this.child,
-    this.padding = const EdgeInsets.all(20),
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.1),
-              width: 1.5,
-            ),
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
-class _HudTextField extends StatelessWidget {
-  final TextEditingController controller;
-  final String labelText;
-  final String hintText;
-  final TextInputType keyboardType;
-  final String? Function(String?)? validator;
-
-  const _HudTextField({
-    required this.controller,
-    required this.labelText,
-    required this.hintText,
-    this.keyboardType = TextInputType.text,
-    this.validator,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _HudText(labelText, fontSize: 12, color: Colors.white70),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(12),
-                border: const _GradientBorder(
-                  width: 1.5,
-                  gradient: LinearGradient(
-                    colors: [Colors.blueAccent, Colors.redAccent],
-                  ),
-                ),
-              ),
-              child: TextFormField(
-                controller: controller,
-                keyboardType: keyboardType,
-                style: const TextStyle(color: Colors.white, letterSpacing: 1.2),
-                validator: validator,
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  border: InputBorder.none,
-                  hintText: hintText,
-                  hintStyle: const TextStyle(color: Colors.white24),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SciFiButton extends StatelessWidget {
-  final String text;
-  final VoidCallback onPressed;
-  final IconData? icon;
-  final double height;
-  final double fontSize;
-
-  const _SciFiButton({
-    required this.text,
-    required this.onPressed,
-    this.icon,
-    this.height = 60,
-    this.fontSize = 18,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: double.infinity,
-        height: height,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: const LinearGradient(
-            colors: [Colors.blueAccent, Colors.redAccent],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.blueAccent.withValues(alpha: 0.4),
-              blurRadius: 15,
-              offset: const Offset(-5, 0),
-            ),
-            BoxShadow(
-              color: Colors.redAccent.withValues(alpha: 0.4),
-              blurRadius: 15,
-              offset: const Offset(5, 0),
-            ),
-          ],
-        ),
-        alignment: Alignment.center,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Positioned(
-              top: 2,
-              left: 10,
-              right: 10,
-              child: Container(
-                height: 1,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.white.withValues(alpha: 0.0),
-                      Colors.white.withValues(alpha: 0.3),
-                      Colors.white.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, color: Colors.white, size: fontSize + 4),
-                  const SizedBox(width: 12),
-                ],
-                _HudText(
-                  text,
-                  fontSize: fontSize,
-                  letterSpacing: 2,
-                  color: Colors.white,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GradientBorder extends BoxBorder {
-  final Gradient gradient;
-  final double width;
-
-  const _GradientBorder({required this.gradient, this.width = 1.0});
-
-  @override
-  EdgeInsetsGeometry get dimensions => EdgeInsets.all(width);
-
-  @override
-  bool get isUniform => true;
-
-  @override
-  void paint(
-    Canvas canvas,
-    Rect rect, {
-    TextDirection? textDirection,
-    BoxShape shape = BoxShape.rectangle,
-    BorderRadius? borderRadius,
-  }) {
-    final Paint paint = Paint()
-      ..strokeWidth = width
-      ..style = PaintingStyle.stroke
-      ..shader = gradient.createShader(rect);
-
-    if (borderRadius != null) {
-      canvas.drawRRect(borderRadius.toRRect(rect).deflate(width / 2), paint);
-    } else {
-      canvas.drawRect(rect.deflate(width / 2), paint);
-    }
-  }
-
-  @override
-  ShapeBorder scale(double t) => _GradientBorder(gradient: gradient, width: width * t);
-
-  @override
-  BorderSide get bottom => BorderSide.none;
-  @override
-  BorderSide get top => BorderSide.none;
 }

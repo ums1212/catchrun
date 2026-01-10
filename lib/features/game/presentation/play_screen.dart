@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
@@ -9,6 +8,10 @@ import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:catchrun/features/game/presentation/widgets/event_popup_overlay.dart';
+import '../../../../core/widgets/hud_text.dart';
+import '../../../../core/widgets/glass_container.dart';
+import '../../../../core/widgets/scifi_button.dart';
+
 
 class PlayScreen extends ConsumerStatefulWidget {
   final String gameId;
@@ -98,7 +101,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
           });
           return const Scaffold(
             backgroundColor: Colors.black,
-            body: Center(child: _HudText('게임이 종료되었습니다.', fontSize: 18)),
+            body: Center(child: HudText('게임이 종료되었습니다.', fontSize: 18)),
           );
         }
 
@@ -139,7 +142,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
               appBar: AppBar(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
-                title: _HudText(
+                title: HudText(
                   isCop ? '미션: 추격' : '미션: 생존',
                   color: themeColor,
                   fontSize: 18,
@@ -182,18 +185,18 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
                           children: [
                             const SizedBox(height: 20),
                             // Timer Section
-                            _GlassContainer(
+                            GlassContainer(
                               padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
                               child: Column(
                                 children: [
-                                  _HudText(
+                                  HudText(
                                     '남은 시간', 
                                     fontSize: 14, 
                                     color: Colors.white.withValues(alpha: 0.6),
                                     letterSpacing: 2,
                                   ),
                                   const SizedBox(height: 8),
-                                  _HudText(
+                                  HudText(
                                     _formatDuration(_remainingTime),
                                     fontSize: 64,
                                     color: themeColor,
@@ -208,7 +211,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
                             // Status Board
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 20),
-                              child: _GlassContainer(
+                              child: GlassContainer(
                                 padding: const EdgeInsets.all(24),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -232,7 +235,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
                                     children: [
                                       if (!isCop) ...[
                                         Expanded(
-                                          child: _SciFiButton(
+                                          child: SciFiButton(
                                             text: '내 QR',
                                             isOutlined: true,
                                             height: 56,
@@ -242,7 +245,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
                                         const SizedBox(width: 16),
                                       ],
                                       Expanded(
-                                        child: _SciFiButton(
+                                        child: SciFiButton(
                                           text: isCop ? '대상 스캔' : '팀원 구출',
                                           height: 56,
                                           onPressed: _isProcessingAction ? () {} : () async {
@@ -257,9 +260,9 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
                                   ),
                                   const SizedBox(height: 20),
                                   // Guidance
-                                  _GlassContainer(
+                                  GlassContainer(
                                     padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                                    child: _HudText(
+                                    child: HudText(
                                       isCop 
                                         ? '대상을 찾아 식별코드를 스캔하세요' 
                                         : '추격을 피하고 수감된 동료를 도우세요',
@@ -311,9 +314,9 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
   Widget _buildStatItem(String label, String value, Color color) {
     return Column(
       children: [
-        _HudText(label, fontSize: 10, color: Colors.white.withValues(alpha: 0.5), fontWeight: FontWeight.normal),
+        HudText(label, fontSize: 10, color: Colors.white.withValues(alpha: 0.5), fontWeight: FontWeight.normal),
         const SizedBox(height: 6),
-        _HudText(value, fontSize: 24, color: color),
+        HudText(value, fontSize: 24, color: color),
       ],
     );
   }
@@ -326,14 +329,14 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
       barrierDismissible: true,
       barrierLabel: 'MyQrDialog',
       pageBuilder: (context, _, __) => Center(
-        child: _GlassContainer(
+        child: GlassContainer(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _HudText('신원 식별 QR', fontSize: 18, color: themeColor),
+              HudText('신원 식별 QR', fontSize: 18, color: themeColor),
               const SizedBox(height: 16),
-              const _HudText(
+              const HudText(
                 '구출을 위해 아군에게 보여주거나\n식별을 위해 경찰에게 보여주세요.', 
                 fontWeight: FontWeight.normal,
                 fontSize: 12,
@@ -353,7 +356,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              _SciFiButton(
+              SciFiButton(
                 text: '닫기',
                 height: 45,
                 fontSize: 14,
@@ -367,218 +370,3 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
   }
 }
 
-// HUD WIDGETS
-class _HudText extends StatelessWidget {
-  final String text;
-  final double fontSize;
-  final Color color;
-  final double letterSpacing;
-  final FontWeight fontWeight;
-
-  const _HudText(
-    this.text, {
-    this.fontSize = 14,
-    this.color = Colors.white,
-    this.letterSpacing = 1.0,
-    this.fontWeight = FontWeight.bold,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        fontSize: fontSize,
-        color: color,
-        fontWeight: fontWeight,
-        letterSpacing: letterSpacing,
-        shadows: [
-          Shadow(
-            color: color.withValues(alpha: 0.5),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GlassContainer extends StatelessWidget {
-  final Widget child;
-  final EdgeInsets padding;
-
-  const _GlassContainer({
-    required this.child,
-    this.padding = const EdgeInsets.all(20),
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.1),
-              width: 1.5,
-            ),
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
-class _SciFiButton extends StatelessWidget {
-  final String text;
-  final VoidCallback onPressed;
-  final IconData? icon;
-  final bool isOutlined;
-  final double height;
-  final double fontSize;
-
-  const _SciFiButton({
-    required this.text,
-    required this.onPressed,
-    this.icon,
-    this.isOutlined = false,
-    this.height = 60,
-    this.fontSize = 18,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: double.infinity,
-        height: height,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: isOutlined
-              ? null
-              : const LinearGradient(
-                  colors: [Colors.blueAccent, Colors.redAccent],
-                ),
-          color: isOutlined ? Colors.black.withValues(alpha: 0.4) : null,
-          border: isOutlined
-              ? _GradientBorder(
-                  width: 1.5,
-                  gradient: const LinearGradient(
-                    colors: [Colors.blueAccent, Colors.redAccent],
-                  ),
-                )
-              : null,
-          boxShadow: isOutlined
-              ? []
-              : [
-                  BoxShadow(
-                    color: Colors.blueAccent.withValues(alpha: 0.4),
-                    blurRadius: 15,
-                    offset: const Offset(-5, 0),
-                  ),
-                  BoxShadow(
-                    color: Colors.redAccent.withValues(alpha: 0.4),
-                    blurRadius: 15,
-                    offset: const Offset(5, 0),
-                  ),
-                ],
-        ),
-        alignment: Alignment.center,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (!isOutlined)
-                  Positioned(
-                    top: 2,
-                    left: 10,
-                    right: 10,
-                    child: Container(
-                      height: 1,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.white.withValues(alpha: 0.0),
-                            Colors.white.withValues(alpha: 0.3),
-                            Colors.white.withValues(alpha: 0.0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (icon != null) ...[
-                      Icon(icon, color: Colors.white, size: fontSize + 4),
-                      const SizedBox(width: 12),
-                    ],
-                    _HudText(
-                      text,
-                      fontSize: fontSize,
-                      letterSpacing: 2,
-                      color: Colors.white,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GradientBorder extends BoxBorder {
-  final Gradient gradient;
-  final double width;
-
-  const _GradientBorder({required this.gradient, this.width = 1.0});
-
-  @override
-  EdgeInsetsGeometry get dimensions => EdgeInsets.all(width);
-
-  @override
-  bool get isUniform => true;
-
-  @override
-  void paint(
-    Canvas canvas,
-    Rect rect, {
-    BoxShape shape = BoxShape.rectangle,
-    BorderRadius? borderRadius,
-    TextDirection? textDirection,
-  }) {
-    final Paint paint = Paint()
-      ..strokeWidth = width
-      ..style = PaintingStyle.stroke
-      ..shader = gradient.createShader(rect);
-
-    if (borderRadius != null) {
-      canvas.drawRRect(borderRadius.toRRect(rect).deflate(width / 2), paint);
-    } else {
-      canvas.drawRect(rect.deflate(width / 2), paint);
-    }
-  }
-
-  @override
-  ShapeBorder scale(double t) =>
-      _GradientBorder(gradient: gradient, width: width * t);
-
-  @override
-  BorderSide get bottom => BorderSide.none;
-  @override
-  BorderSide get top => BorderSide.none;
-}
