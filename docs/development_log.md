@@ -15,6 +15,15 @@
 
 ## 2026-01-10 (토)
 
+### 🚀 프로필 설정 화면 UI 고도화 (Onboarding Screen UI Polish)
+
+#### ✅ 주요 작업 및 성과
+- **화면 회전 대응 배경 이미지 구현**
+    - `OrientationBuilder`를 활용하여 가로/세로 모드에 최적화된 배경 이미지(`profile_setting_portrait.png`, `profile_setting_landscape.png`) 자동 전환 로직 구현
+    - `BoxFit.cover` 적용으로 이미지 왜곡 없이 화면 전체를 채우는 최적의 배경 비율 설정
+- **투명 App Bar 적용**
+    - 배경 이미지가 상단 바 영역까지 확장되도록 `extendBodyBehindAppBar: true` 및 `AppBar` 배경 투명화 설정
+
 ### 🚀 로그인 화면 디자인 고도화 (Login Screen UI Polish)
 
 #### ✅ 주요 작업 및 성과
@@ -26,9 +35,17 @@
 ### 🚀 보안 강화 및 환경 변수 관리 도입 (Security & Config Enhancement)
 
 #### ✅ 주요 작업 및 성과
-- **`flutter_config` 패키지 도입 및 설정**
-    - API Key, `apiBaseUrl`, `environment` 등 민감 정보와 환경 설정을 `.env` 파일로 통합 관리
-    - `pubspec.yaml`, Android (`build.gradle.kts`), iOS (`AppDelegate.swift`)에 필요한 Native 설정 적용
+- **환경 변수 관리 체계 전환 (`flutter_config` → `flutter_dotenv`)**
+    - 최신 Flutter/Android 환경(AGP 8.0+)과 호환되지 않는 `flutter_config`를 제거하고 안정적인 `flutter_dotenv`로 대체
+    - `.env` 파일의 에셋 등록 및 `main.dart`, `firebase_options.dart` 코드 업데이트
+- **Android 빌드 환경 최신화 및 이슈 해결**
+    - 모든 서브프로젝트의 `jvmTarget`을 17로, `compileSdk`를 36으로 강제 동기화하여 플러그인 간 충돌 방지
+    - AGP 8.0의 엄격한 `namespace` 및 Manifest `package` 속성 이슈를 Gradle 스크립트 최적화를 통해 해결
+- **런타임 안정성 및 보안 강화**
+    - AndroidManifest.xml에서 `FirebaseInitProvider`를 제거하여 네이티브 자동 초기화 간섭 차단
+    - `FirebaseOptions`를 `static getter`로 변경하여 `.env` 로드 후 올바른 API Key를 사용하도록 보장
+    - Firebase 중복 초기화 방지 로직 적용 및 예외 처리 강화
+    - `.env` 파일을 통한 API Key 등 민감 정보의 안전한 관리 체계 구축
 - **Firebase API Key 보호 및 연동**
     - `firebase_options.dart`: 하드코딩된 API Key를 `FlutterConfig.get()` 호출로 대체하여 보안성 확보
     - `main.dart`: 앱 시작 시 `FlutterConfig.loadEnvVariables()` 호출 및 `AppConfig` 초기화 로직을 `.env` 기반으로 전환

@@ -6,16 +6,26 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'firebase_options.dart';
-import 'package:flutter_config/flutter_config.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await FlutterConfig.loadEnvVariables();
+  await dotenv.load(fileName: ".env");
   
-  // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // Initialize Firebase safely with .env options
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+  } catch (e) {
+    if (e.toString().contains('duplicate-app')) {
+      debugPrint('Firebase already initialized (likely by Flutter): $e');
+    } else {
+      rethrow;
+    }
+  }
 
   // Enable Edge-to-Edge mode and set transparent system bars
   SystemChrome.setSystemUIOverlayStyle(
@@ -27,10 +37,10 @@ void main() async {
   );
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  // Initialize AppConfig using .env values via FlutterConfig
+  // Initialize AppConfig using .env values via flutter_dotenv
   AppConfig.init({
-    'apiBaseUrl': FlutterConfig.get('API_BASE_URL'),
-    'environment': FlutterConfig.get('ENVIRONMENT'),
+    'apiBaseUrl': dotenv.env['API_BASE_URL'] ?? '',
+    'environment': dotenv.env['ENVIRONMENT'] ?? 'development',
   });
 
   runApp(
