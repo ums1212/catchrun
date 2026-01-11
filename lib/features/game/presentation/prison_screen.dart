@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,6 +25,51 @@ class PrisonScreen extends ConsumerStatefulWidget {
 
 class _PrisonScreenState extends ConsumerState<PrisonScreen> {
   bool _isScanning = false;
+  Timer? _timer;
+  Duration _remainingTime = Duration.zero;
+  Duration _serverTimeOffset = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _initServerTimeOffset();
+    _startTimer();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _initServerTimeOffset() async {
+    try {
+      final offset = await ref.read(gameRepositoryProvider).calculateServerTimeOffset();
+      if (mounted) {
+        setState(() {
+          _serverTimeOffset = offset;
+        });
+      }
+    } catch (e) {
+      // offset 계산 실패 시 기본값(Duration.zero) 유지
+    }
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {});
+    });
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
 
   Future<void> _useNfcKey() async {
     final availability = await NfcManager.instance.checkAvailability();
@@ -186,6 +232,27 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
         }
 
         final game = snapshot.data!;
+        
+        // 게임 종료 시 결과 화면으로 이동
+        if (game.status == GameStatus.finished) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              context.go('/result/${widget.gameId}');
+            }
+          });
+          return const Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(child: HudText('게임이 종료되었습니다.', fontSize: 18)),
+          );
+        }
+        
+        // 서버 시간 기준으로 남은 시간 계산
+        if (game.endsAt != null) {
+          final estimatedServerTime = DateTime.now().add(_serverTimeOffset);
+          _remainingTime = game.endsAt!.difference(estimatedServerTime);
+          if (_remainingTime.isNegative) _remainingTime = Duration.zero;
+        }
+        
         final participantsAsync = ref.watch(gameRepositoryProvider).watchParticipants(widget.gameId);
         
         return StreamBuilder<List<ParticipantModel>>(
@@ -239,7 +306,29 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
                       SafeArea(
                         child: Column(
                           children: [
-                            const Spacer(),
+                            const SizedBox(height: 20),
+                            // Timer Section
+                            GlassContainer(
+                              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+                              child: Column(
+                                children: [
+                                  HudText(
+                                    '남은 시간', 
+                                    fontSize: 14, 
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    letterSpacing: 2,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  HudText(
+                                    _formatDuration(_remainingTime),
+                                    fontSize: 48,
+                                    color: Colors.redAccent,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
                             const Icon(
                               Icons.lock_person_rounded,
                               size: 100,

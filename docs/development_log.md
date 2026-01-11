@@ -46,6 +46,38 @@
 
 ---
 
+### 🐛 버그 수정: 감옥 화면 게임 종료 처리 (Prison Screen Game End Handling)
+
+#### ✅ 주요 작업 및 성과
+- **문제 해결**
+    - **문제 현상**: 도둑이 수감되어 감옥 화면(`PrisonScreen`)에 있을 때 게임이 종료되어도 결과 화면으로 이동하지 않음
+    - **추가 문제**: 감옥 화면에서 게임 남은 시간이 표시되지 않아 게임 진행 상황 파악 불가
+- **타이머 시스템 구현**
+    - `PlayScreen`과 동일한 타이머 로직을 `PrisonScreen`에 적용
+    - **서버 시간 동기화**: `_initServerTimeOffset()`으로 서버 시간과 로컬 시간의 offset 계산
+    - **주기적 업데이트**: `Timer.periodic`을 사용하여 1초마다 화면 갱신
+    - **시간 계산**: 서버 시간 기준으로 정확한 남은 시간 계산 및 표시
+- **게임 종료 감지 및 자동 네비게이션**
+    - 게임 상태(`game.status`)를 실시간으로 감시하여 `GameStatus.finished` 감지
+    - 종료 감지 시 `context.go('/result/${gameId}')`로 결과 화면으로 자동 이동
+    - `WidgetsBinding.instance.addPostFrameCallback`을 사용하여 빌드 사이클 중 안전한 네비게이션 보장
+- **UI 개선**
+    - 화면 상단에 타이머 섹션 추가 (`GlassContainer` 스타일)
+    - 레드 네온 테마로 48pt 크기의 남은 시간 표시
+    - MM:SS 형식의 `_formatDuration()` 메서드로 가독성 향상
+
+#### 📝 비고 / 특이사항
+- **코드 일관성**: `PlayScreen`과 완전히 동일한 타이머 및 서버 시간 동기화 로직 적용하여 일관성 유지
+- **리소스 관리**: `dispose()` 메서드에서 타이머를 올바르게 정리하여 메모리 누수 방지
+- **안전한 비동기 처리**: 모든 비동기 작업에서 `mounted` 체크를 통해 위젯 unmounted 상태 오류 방지
+- **UI/UX**: 감옥 화면에서도 게임 진행 상황을 실시간으로 파악할 수 있어 사용자 경험 개선
+
+#### 🔗 관련 문서
+- 수정 파일:
+    - `lib/features/game/presentation/prison_screen.dart` - 타이머 로직, 게임 종료 처리, UI 추가
+
+---
+
 ### 🐛 버그 수정: 타이머 동기화 문제 해결 (Timer Synchronization Fix)
 
 #### ✅ 주요 작업 및 성과
