@@ -15,6 +15,38 @@
 
 ## 2026-01-11 (토)
 
+### 🚀 기능 추가 및 UX 개선: 참여자 강퇴 및 로비 보직 변경 (Kick Participant & Lobby UX)
+
+#### ✅ 주요 작업 및 성과
+- **참여자 강퇴(Kick) 기능 구현**
+    - `GameRepository.kickParticipant()`: 특정 참여자를 게임에서 제거하는 트랜잭션 로직 추가
+    - `LobbyScreen`: 방장이 참여자 클릭 시 나타나는 관리 메뉴에 "강퇴하기" 옵션 추가
+    - **강퇴 알림 시스템**: 
+        - 강퇴당한 유저가 자동으로 홈 화면으로 이동하며 안내 다이얼로그를 받도록 구현
+        - `HomeScreen`에서 `isKicked` 파라미터를 감지하여 신뢰성 있는 알림 표시 (`didUpdateWidget` 활용)
+- **로비 UX 스트림라인 (방장 본인 보직 변경)**
+    - **기존 문제**: 방장이 본인 보직을 변경하려면 불필요한 중간 메뉴를 거쳐야 했음
+    - **개선**: `LobbyScreen`에서 방장이 본인 프로필 클릭 시 즉시 역할 변경 바텀시트가 노출되도록 직관적으로 변경
+- **코드 품질 및 UI 안정화**
+    - `HomeScreen`: 중복 정의된 로컬 위젯(`_HudText`, `_SciFiButton`)을 제거하고 공통 위젯(`HudText`, `SciFiButton`)으로 통합
+    - `HomeScreen`: 누락되었던 `dart:ui` 임포트를 복구하여 `ImageFilter` 오류 해결
+    - `LobbyScreen`: 스트림 구독(`StreamSubscription`) 방식을 도입하여 강퇴 여부를 실시간으로 더욱 견고하게 감시
+
+#### 📝 비고 / 특이사항
+- **강퇴 로직의 안정성**: 단순 팝업이 아니라 리포지토리 레이어에서 데이터를 삭제하고, 클라이언트가 이를 감지하여 정중하게 퇴장시키는 프로세스를 구축함
+- **UI 일관성**: 홈 화면의 레거시 위젯들을 공통 위젯으로 교체함으로써 앱 전반의 디자인 시스템 일관성 확보
+- **버그 해결**: `GoRouterState`의 비정상적인 상태 읽기로 인해 강퇴 알림이 안 뜨던 이슈를 `GoRouter` 파라미터와 생성자 주입 방식으로 개선하여 해결
+
+#### 🔗 관련 문서
+- 수정 파일:
+    - `lib/features/game/presentation/lobby_screen.dart` - 강퇴 메뉴 및 본인 역할 변경 로직
+    - `lib/features/game/data/game_repository.dart` - 강퇴 트랜잭션 구현
+    - `lib/features/home/home_screen.dart` - 위젯 통합 및 강퇴 알림 처리
+    - `lib/core/router/app_router.dart` - 강퇴 파라미터 라우팅 설정
+
+---
+
+
 ### ⚖️ 게임 밸런스 개선: 열쇠 사용 점수 차감 구현 (Prison Key Score Penalty)
 
 #### ✅ 주요 작업 및 성과

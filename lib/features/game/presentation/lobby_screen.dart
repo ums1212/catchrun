@@ -13,7 +13,7 @@ import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 import 'package:app_settings/app_settings.dart';
 import 'dart:typed_data';
 import 'dart:convert';
-
+import 'dart:async';
 import 'package:catchrun/core/widgets/hud_text.dart';
 import 'package:catchrun/core/widgets/glass_container.dart';
 import 'package:catchrun/core/widgets/scifi_button.dart';
@@ -32,6 +32,7 @@ class LobbyScreen extends ConsumerStatefulWidget {
 class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   late final AppLifecycleListener _lifecycleListener;
   bool _isExiting = false;
+  StreamSubscription? _participantsSubscription;
 
   @override
   void initState() {
@@ -39,10 +40,32 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
     _lifecycleListener = AppLifecycleListener(
       onDetach: _leaveGameSilently,
     );
+    _setupKickDetection();
+  }
+
+  void _setupKickDetection() {
+    final participantsStream = ref.read(gameRepositoryProvider).watchParticipants(widget.gameId);
+    bool hasSeenSelf = false;
+
+    _participantsSubscription = participantsStream.listen((participants) {
+      final currentUser = ref.read(userProvider).value;
+      if (currentUser != null && !_isExiting) {
+        final isInGame = participants.any((p) => p.uid == currentUser.uid);
+        if (isInGame) {
+          hasSeenSelf = true;
+        } else if (hasSeenSelf) {
+          _isExiting = true;
+          if (mounted) {
+            context.go('/home?kicked=true');
+          }
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
+    _participantsSubscription?.cancel();
     _lifecycleListener.dispose();
     super.dispose();
   }
@@ -462,7 +485,15 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                                                 ),
                                               ),
                                               child: ListTile(
-                                                onTap: isRoomHost ? () => _showRoleChangeBottomSheet(context, game, p) : null,
+                                                onTap: isRoomHost 
+                                                  ? () {
+                                                      if (isCurrentUser) {
+                                                        _showRoleChangeBottomSheet(context, game, p);
+                                                      } else {
+                                                        _showParticipantActionBottomSheet(context, game, p);
+                                                      }
+                                                    }
+                                                  : null,
                                                 leading: Container(
                                                   width: 44,
                                                   height: 44,
@@ -637,6 +668,108 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _showParticipantActionBottomSheet(BuildContext context, GameModel game, ParticipantModel p) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.8),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                   const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  HudText('${p.nicknameSnapshot} 관리', fontSize: 18, color: Colors.cyanAccent),
+                  const SizedBox(height: 24),
+                  ListTile(
+                    leading: const Icon(Icons.person_pin_rounded, color: Colors.cyanAccent),
+                    title: const HudText('역할 설정'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showRoleChangeBottomSheet(context, game, p);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.person_remove_rounded, color: Colors.redAccent),
+                    title: const HudText('강퇴하기', color: Colors.redAccent),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showKickConfirmationDialog(context, game, p);
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showKickConfirmationDialog(BuildContext context, GameModel game, ParticipantModel p) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'KickConfirmation',
+      pageBuilder: (context, _, __) => Center(
+        child: GlassContainer(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const HudText('강퇴 확인', fontSize: 20, color: Colors.redAccent),
+              const SizedBox(height: 16),
+              HudText('${p.nicknameSnapshot}님을 강퇴하시겠습니까?', fontWeight: FontWeight.normal),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: HudText('취소', color: Colors.white.withValues(alpha: 0.6)),
+                    ),
+                  ),
+                  Expanded(
+                    child: SciFiButton(
+                      text: '강퇴',
+                      height: 45,
+                      fontSize: 14,
+                      onPressed: () async {
+                        final navigator = Navigator.of(context);
+                        await ref.read(gameRepositoryProvider).kickParticipant(
+                          gameId: game.id,
+                          uid: p.uid,
+                        );
+                        navigator.pop();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

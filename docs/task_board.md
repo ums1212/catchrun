@@ -8,8 +8,8 @@
 - 치팅 방지 강화(Cloud Functions authoritative server)
 - 장기 미사용(미완성 프로필) 유령 회원 자동 삭제 시스템 (@user_cleanup_design.md)
 - 게임 만들기(S-05) 인원 선택 UI 개선 (텍스트 클릭 시 스피너 위젯 노출)
-- 대기방(S-07) 방장의 참가자 강퇴(Kick) 기능
 - **NFC 고도화**: NFC 태그 시 앱 자동 실행(AAR) 및 미설치 시 마켓(Deep Link) 이동 기능
+- 경찰과 도둑 활동내역(탈출, 수감, 열쇠 사용 등)을 플레이화면에서 로그 목록으로 표시할 수 있는 버튼 추가(파이어스토어에 로그 저장)
 
 ## Sprint 0 — 프로젝트 세팅 (Foundation)
 ### 목표(DoD)
@@ -58,11 +58,9 @@
 - 역할 자동 배정이 기본
 - “경찰 지원” 및 방장 Long-press로 역할 변경/고정 가능
 - 방장이 게임 시작 → 타이머 표시 → 종료 조건 적용
-### Tasks (역할)
-- 참가자 문서에 role, roleLock, wantsCop 반영
-- 자동 배정 알고리즘(인원/비율 반영)
-- ‘경찰 지원’ 토글 → wantsCop 저장
-- 방장 Long-press RoleChangeBottomSheet(경찰/도둑 변경 + 고정)
+- 방장 직접 지정 방식 역할 변경 (RoleChangeBottomSheet)
+- [x] 방장 본인 클릭 시 즉시 역할 변경 UX 개선 (중간 메뉴 제거)
+- [x] 대기방(S-07) 방장의 참여자 강퇴(Kick) 기능 추가 및 강퇴 알림 구현
 ### Tasks (게임 시작/타이머/종료)
 - 방장 “게임 시작”:
   - status=playing, startedAt, endsAt 세팅

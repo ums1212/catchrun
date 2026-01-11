@@ -433,6 +433,48 @@ class GameRepository {
     });
   }
 
+  // 강퇴하기
+  Future<void> kickParticipant({
+    required String gameId,
+    required String uid,
+  }) async {
+    await _firestore.runTransaction((transaction) async {
+      final gameRef = _firestore.collection('games').doc(gameId);
+      final participantRef = gameRef.collection('participants').doc(uid);
+
+      final gameDoc = await transaction.get(gameRef);
+      if (!gameDoc.exists) return;
+
+      final participantDoc = await transaction.get(participantRef);
+      if (!participantDoc.exists) return;
+
+      final participantData = participantDoc.data()!;
+      final nickname = participantData['nicknameSnapshot'] ?? '익명';
+
+      // 1. 참가자 삭제
+      transaction.delete(participantRef);
+
+      // 2. 인원수 업데이트
+      transaction.update(gameRef, {
+        'counts.total': FieldValue.increment(-1),
+      });
+
+      // 3. 강퇴 이벤트 기록
+      final eventRef = gameRef.collection('events').doc();
+      transaction.set(eventRef, {
+        'type': 'PLAYER_KICKED',
+        'createdAt': FieldValue.serverTimestamp(),
+        'actorUid': gameDoc.data()?['hostUid'],
+        'targetUid': uid,
+        'audience': 'all',
+        'payload': {
+          'nickname': nickname,
+          'message': '$nickname님이 방장에 의해 강퇴되었습니다.',
+        },
+      });
+    });
+  }
+
   // 체포하기
   Future<void> catchRobber({
     required String gameId,

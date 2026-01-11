@@ -34,7 +34,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/home',
-        builder: (context, state) => const HomeScreen(),
+        builder: (context, state) {
+          final isKicked = state.uri.queryParameters['kicked'] == 'true';
+          return HomeScreen(isKicked: isKicked);
+        },
       ),
       GoRoute(
         path: '/create-game',

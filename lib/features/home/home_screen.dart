@@ -1,21 +1,106 @@
 import 'dart:ui';
+import 'package:catchrun/core/widgets/hud_text.dart';
+import 'package:catchrun/core/widgets/scifi_button.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends ConsumerStatefulWidget {
+  final bool isKicked;
+  const HomeScreen({super.key, this.isKicked = false});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.isKicked && mounted) {
+        _showKickedDialog(context);
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isKicked && !oldWidget.isKicked) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showKickedDialog(context);
+        }
+      });
+    }
+  }
+
+  void _showKickedDialog(BuildContext context) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'KickedDismiss',
+      pageBuilder: (context, anim1, anim2) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: Container(
+                width: 300,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.redAccent.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const HudText('강퇴 알림', fontSize: 20, color: Colors.redAccent),
+                    const SizedBox(height: 16),
+                    const HudText(
+                      '방장의 권한으로 강퇴당하셨습니다.',
+                      fontSize: 14,
+                      fontWeight: FontWeight.normal,
+                    ),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      child: SciFiButton(
+                        text: '확인',
+                        height: 45,
+                        fontSize: 14,
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final userAsync = ref.watch(userProvider);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: _HudText(
+        title: HudText(
           'CATCH RUN',
           fontSize: 22,
           letterSpacing: 4,
@@ -85,13 +170,13 @@ class HomeScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 60),
                             // Action Buttons
-                            _SciFiButton(
+                            SciFiButton(
                               text: '게임 만들기',
                               onPressed: () => context.push('/create-game'),
                               icon: Icons.add_rounded,
                             ),
                             const SizedBox(height: 24),
-                            _SciFiButton(
+                            SciFiButton(
                               text: '게임 참가하기',
                               onPressed: () => context.push('/join-game'),
                               icon: Icons.group_add_rounded,
@@ -107,7 +192,7 @@ class HomeScreen extends ConsumerWidget {
                     child: CircularProgressIndicator(color: Colors.cyanAccent),
                   ),
                   error: (e, s) => Center(
-                    child: _HudText('데이터를 불러올 수 없습니다', color: Colors.redAccent),
+                    child: HudText('데이터를 불러올 수 없습니다', color: Colors.redAccent),
                   ),
                 ),
               ],
@@ -144,9 +229,9 @@ class HomeScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const _HudText('로그아웃', fontSize: 20, color: Colors.cyanAccent),
+                    const HudText('로그아웃', fontSize: 20, color: Colors.cyanAccent),
                     const SizedBox(height: 16),
-                    const _HudText(
+                    const HudText(
                       '정말 로그아웃 하시겠습니까?',
                       fontSize: 14,
                       fontWeight: FontWeight.normal,
@@ -157,14 +242,14 @@ class HomeScreen extends ConsumerWidget {
                         Expanded(
                           child: TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: _HudText(
+                            child: HudText(
                               '취소',
                               color: Colors.white.withValues(alpha: 0.6),
                             ),
                           ),
                         ),
                         Expanded(
-                          child: _SciFiButton(
+                          child: SciFiButton(
                             text: '확인',
                             height: 45,
                             fontSize: 14,
@@ -256,7 +341,7 @@ class _HomeScreenProfile extends StatelessWidget {
               width: 1,
             ),
           ),
-          child: _HudText(
+          child: HudText(
             '안녕하세요, $nickname님!',
             fontSize: 18,
             color: Colors.white,
@@ -265,186 +350,4 @@ class _HomeScreenProfile extends StatelessWidget {
       ],
     );
   }
-}
-
-class _HudText extends StatelessWidget {
-  final String text;
-  final double fontSize;
-  final Color color;
-  final double letterSpacing;
-  final FontWeight fontWeight;
-
-  const _HudText(
-    this.text, {
-    this.fontSize = 14,
-    this.color = Colors.white,
-    this.letterSpacing = 1.0,
-    this.fontWeight = FontWeight.bold,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: fontSize,
-        color: color,
-        fontWeight: fontWeight,
-        letterSpacing: letterSpacing,
-        shadows: [
-          Shadow(
-            color: color.withValues(alpha: 0.5),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SciFiButton extends StatelessWidget {
-  final String text;
-  final VoidCallback onPressed;
-  final IconData? icon;
-  final bool isOutlined;
-  final double height;
-  final double fontSize;
-
-  const _SciFiButton({
-    required this.text,
-    required this.onPressed,
-    this.icon,
-    this.isOutlined = false,
-    this.height = 60,
-    this.fontSize = 18,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: double.infinity,
-        height: height,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: isOutlined
-              ? null
-              : const LinearGradient(
-                  colors: [Colors.blueAccent, Colors.redAccent],
-                ),
-          color: isOutlined ? Colors.black.withValues(alpha: 0.4) : null,
-          border: isOutlined
-              ? _GradientBorder(
-                  width: 1.5,
-                  gradient: const LinearGradient(
-                    colors: [Colors.blueAccent, Colors.redAccent],
-                  ),
-                )
-              : null,
-          boxShadow: isOutlined
-              ? []
-              : [
-                  BoxShadow(
-                    color: Colors.blueAccent.withValues(alpha: 0.4),
-                    blurRadius: 15,
-                    offset: const Offset(-5, 0),
-                  ),
-                  BoxShadow(
-                    color: Colors.redAccent.withValues(alpha: 0.4),
-                    blurRadius: 15,
-                    offset: const Offset(5, 0),
-                  ),
-                ],
-        ),
-        alignment: Alignment.center,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (!isOutlined)
-                  Positioned(
-                    top: 2,
-                    left: 10,
-                    right: 10,
-                    child: Container(
-                      height: 1,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.white.withValues(alpha: 0.0),
-                            Colors.white.withValues(alpha: 0.3),
-                            Colors.white.withValues(alpha: 0.0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (icon != null) ...[
-                      Icon(icon, color: Colors.white, size: fontSize + 4),
-                      const SizedBox(width: 12),
-                    ],
-                    _HudText(
-                      text,
-                      fontSize: fontSize,
-                      letterSpacing: 2,
-                      color: Colors.white,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GradientBorder extends BoxBorder {
-  final Gradient gradient;
-  final double width;
-
-  const _GradientBorder({required this.gradient, this.width = 1.0});
-
-  @override
-  EdgeInsetsGeometry get dimensions => EdgeInsets.all(width);
-
-  @override
-  bool get isUniform => true;
-
-  @override
-  void paint(
-    Canvas canvas,
-    Rect rect, {
-    TextDirection? textDirection,
-    BoxShape shape = BoxShape.rectangle,
-    BorderRadius? borderRadius,
-  }) {
-    final Paint paint = Paint()
-      ..strokeWidth = width
-      ..style = PaintingStyle.stroke
-      ..shader = gradient.createShader(rect);
-
-    if (borderRadius != null) {
-      canvas.drawRRect(borderRadius.toRRect(rect).deflate(width / 2), paint);
-    } else {
-      canvas.drawRect(rect.deflate(width / 2), paint);
-    }
-  }
-
-  @override
-  ShapeBorder scale(double t) =>
-      _GradientBorder(gradient: gradient, width: width * t);
-
-  @override
-  BorderSide get bottom => BorderSide.none;
-  @override
-  BorderSide get top => BorderSide.none;
 }
