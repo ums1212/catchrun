@@ -10,6 +10,7 @@ import 'package:catchrun/core/widgets/scifi_button.dart';
 import 'package:catchrun/core/widgets/hud_section_header.dart';
 import 'package:catchrun/core/widgets/hud_text_field.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:catchrun/core/widgets/hud_dialog.dart';
 import 'package:catchrun/features/game/presentation/widgets/qr_scan_overlay.dart';
 
 class JoinGameScreen extends ConsumerStatefulWidget {
@@ -97,53 +98,26 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
   }
 
   void _showPermissionDialog() {
-    showGeneralDialog(
+    HudDialog.show(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: 'PermissionDismiss',
-      pageBuilder: (context, anim1, anim2) => Center(
-        child: Material(
-          color: Colors.transparent,
-          child: GlassContainer(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const HudText('카메라 권한 필요', fontSize: 20, color: Colors.cyanAccent),
-                const SizedBox(height: 16),
-                const HudText(
-                  'QR 코드 스캔을 위해 카메라 권한이 필요합니다. 설정 화면에서 권한을 허용해주세요.',
-                  fontSize: 14,
-                  fontWeight: FontWeight.normal,
-                ),
-                const SizedBox(height: 32),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: HudText('취소', color: Colors.white.withValues(alpha: 0.6)),
-                      ),
-                    ),
-                    Expanded(
-                      child: SciFiButton(
-                        text: '설정 이동',
-                        height: 45,
-                        fontSize: 14,
-                        onPressed: () async {
-                          final navigator = Navigator.of(context);
-                          await openAppSettings();
-                          if (mounted) navigator.pop();
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+      title: '카메라 권한 필요',
+      contentText: 'QR 코드 스캔을 위해 카메라 권한이 필요합니다. 설정 화면에서 권한을 허용해주세요.',
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: HudText('취소', color: Colors.white.withValues(alpha: 0.6)),
         ),
-      ),
+        SciFiButton(
+          text: '설정 이동',
+          height: 45,
+          fontSize: 14,
+          onPressed: () async {
+            final navigator = Navigator.of(context);
+            await openAppSettings();
+            if (mounted) navigator.pop();
+          },
+        ),
+      ],
     );
   }
 

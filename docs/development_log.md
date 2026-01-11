@@ -13,7 +13,57 @@
 
 ---
 
-## 2026-01-11 (토)
+## 2026-01-11 (일)
+
+### 🧹 코드 품질 개선: 위젯 분리 및 HUD 공통화 (Widget Separation & HUD Standardization)
+
+#### ✅ 주요 작업 및 성과
+- **공통 위젯 시스템 구축**
+    - `lib/core/widgets/stat_item.dart`: 통계 표시용 범용 위젯 추출 및 파라미터 표준화 (`color` -> `valueColor`)
+    - `lib/core/widgets/hud_dialog.dart`: 앱 전반의 다이얼로그 디자인 통일을 위한 `HudDialog` 구현 및 `static show()` 메서드 제공
+    - `lib/core/widgets/glass_container.dart`: 외부 레이아웃 제어를 위한 `margin` 파라미터 추가
+- **화면별 위젯 분리 및 리팩토링**
+    - `home_screen.dart`: `HomeProfileCard` 추출
+    - `lobby_screen.dart`: `LobbyGameCodeCard`, `LobbyParticipantTile` 추출
+    - `play_screen.dart`: `MyQrDialogContent` (`play_widgets.dart`) 추출
+    - `result_screen.dart`: `ResultTitleCard`, `ResultRankingItem` (`result_widgets.dart`) 추출
+    - **결과**: 모든 화면(`Home`, `Lobby`, `Play`, `Prison`, `Result`, `Join`)이 통일된 `HudDialog` 및 분리된 위젯을 사용하도록 구조 개선
+- **다이얼로그 시스템 전면 교체**
+    - 기존의 복잡하고 중복된 `showGeneralDialog` 호출을 `HudDialog.show()`로 대체하여 가독성 향상 및 디자인 일관성 확보
+
+#### 📝 비고 / 특이사항
+- **디자인 시스템 일관성**: 모든 알림과 확인 창이 동일한 글래스모피즘 HUD 테마를 따르게 되어 사용자 인터페이스의 전문성 향상
+- **유지보수성**: 각 화면 파일의 크기가 대폭 줄어들었으며(최대 30% 이상), UI 컴포넌트 수정 시 관련 위젯 파일만 수정하면 모든 화면에 반영됨
+
+#### 🔗 관련 문서
+- `C:\Users\voll1\.gemini\antigravity\brain\215809b8-4b98-4af3-baba-c726fb4ee2a8\walkthrough.md`
+
+---
+
+### 🧹 코드 품질 개선: 린트 오류 수정 및 비동기 처리 표준화 (Lint Fix & BuildContext Standardization)
+
+#### ✅ 주요 작업 및 성과
+- **프로젝트 전수 린트 정화**
+    - `flutter analyze` 결과 확인된 모든 오류 및 경고 해결
+    - 미사용 임포트(`qr_flutter`, `go_router`) 제거 및 누락된 임포트 보충
+    - 정확한 파라미터 매핑을 통해 정의되지 않은 명명된 파라미터 오류 해결
+- **비동기 BuildContext 안전 처리 표준화**
+    - `use_build_context_synchronously` 경고를 방지하기 위한 전수 보안 패치
+    - **주요 수정 패턴**:
+        - `await` 이전에 `Navigator.of(context)` 또는 `ScaffoldMessenger.of(context)`를 변수에 캡처하여 사용
+        - 비동기 작업 후 반드시 `if (mounted)` 또는 `if (context.mounted)` 체크 수행
+    - **적용 대상**: `LobbyScreen`, `QrScanScreen`, `PrisonScreen`, `JoinGameScreen` 등 비즈니스 로직이 밀집된 모든 화면
+- **최종 검증**
+    - `flutter analyze` 실행 결과 **No issues found!** 상태 달성 및 유지
+
+#### 📝 비고 / 특이사항
+- **런타임 안정성**: 비동기 작업 중 화면이 닫히는 예외 상황에서도 앱이 비정상적으로 종료되지 않도록 방어 로직 강화
+- **코드 품질**: 단순 수정을 넘어 전체 코드베이스에 걸쳐 일관된 비동기 처리 패턴을 확립함
+
+#### 🔗 관련 문서
+- `C:\Users\voll1\.gemini\antigravity\brain\215809b8-4b98-4af3-baba-c726fb4ee2a8\walkthrough.md`
+
+---
 
 ### 🚀 기능 추가 및 UX 개선: 참여자 강퇴 및 로비 보직 변경 (Kick Participant & Lobby UX)
 

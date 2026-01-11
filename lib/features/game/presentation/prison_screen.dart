@@ -13,6 +13,8 @@ import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:catchrun/core/widgets/hud_text.dart';
 import 'package:catchrun/core/widgets/glass_container.dart';
 import 'package:catchrun/core/widgets/scifi_button.dart';
+import 'package:catchrun/core/widgets/stat_item.dart';
+import 'package:catchrun/core/widgets/hud_dialog.dart';
 
 class PrisonScreen extends ConsumerStatefulWidget {
   final String gameId;
@@ -77,54 +79,34 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
     if (availability != NfcAvailability.enabled) {
       if (!mounted) return;
 
-      showGeneralDialog(
+      HudDialog.show(
         context: context,
-        barrierDismissible: true,
-        barrierLabel: 'NfcDisabledDialog',
-        pageBuilder: (context, _, __) => Center(
-          child: GlassContainer(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const HudText('NFC 비활성', fontSize: 18, color: Colors.redAccent),
-                const SizedBox(height: 16),
-                const HudText(
-                  'NFC 기능이 꺼져 있거나 지원되지 않습니다.\n시스템 설정에서 활성화해 주세요.',
-                  fontWeight: FontWeight.normal,
-                  fontSize: 12,
-                  color: Colors.white70,
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: SciFiButton(
-                        text: '취소',
-                        height: 45,
-                        fontSize: 14,
-                        isOutlined: true,
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: SciFiButton(
-                        text: '설정',
-                        height: 45,
-                        fontSize: 14,
-                        onPressed: () async {
-                          await AppSettings.openAppSettings(type: AppSettingsType.nfc);
-                          if (context.mounted) Navigator.pop(context);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+        title: 'NFC 비활성',
+        titleColor: Colors.redAccent,
+        contentText: 'NFC 기능이 꺼져 있거나 지원되지 않습니다.\n시스템 설정에서 활성화해 주세요.',
+        actions: [
+          SciFiButton(
+            text: '취소',
+            height: 45,
+            fontSize: 14,
+            isOutlined: true,
+            onPressed: () {
+            if (context.mounted) {
+              Navigator.pop(context);
+            }
+          },
           ),
-        ),
+          SciFiButton(
+            text: '설정',
+            height: 45,
+            fontSize: 14,
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              await AppSettings.openAppSettings(type: AppSettingsType.nfc);
+              if (mounted) navigator.pop();
+            },
+          ),
+        ],
       );
       return;
     }
@@ -132,42 +114,38 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
     setState(() => _isScanning = true);
     if (!mounted) return;
 
-    showGeneralDialog(
+    HudDialog.show(
       context: context,
       barrierDismissible: false,
-      barrierLabel: 'NfcScanDialog',
-      pageBuilder: (context, _, __) => Center(
-        child: GlassContainer(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.nfc, size: 64, color: Colors.orangeAccent),
-              const SizedBox(height: 24),
-              const HudText('열쇠 스캔 중', fontSize: 18, color: Colors.orangeAccent),
-              const SizedBox(height: 16),
-              const HudText(
-                '등록된 NFC 열쇠를\n기기 뒷면에 인식시켜 주세요.',
-                fontWeight: FontWeight.normal,
-                fontSize: 12,
-                color: Colors.white70,
-              ),
-              const SizedBox(height: 32),
-              SciFiButton(
-                text: '중단',
-                height: 45,
-                fontSize: 14,
-                isOutlined: true,
-                onPressed: () {
-                  NfcManager.instance.stopSession();
-                  Navigator.pop(context);
-                  setState(() => _isScanning = false);
-                },
-              ),
-            ],
+      title: '열쇠 스캔 중',
+      titleColor: Colors.orangeAccent,
+      content: Column(
+        children: [
+          const SizedBox(height: 16),
+          const Icon(Icons.nfc, size: 64, color: Colors.orangeAccent),
+          const SizedBox(height: 24),
+          const HudText(
+            '등록된 NFC 열쇠를\n기기 뒷면에 인식시켜 주세요.',
+            fontWeight: FontWeight.normal,
+            fontSize: 12,
+            color: Colors.white70,
+            textAlign: TextAlign.center,
           ),
-        ),
+        ],
       ),
+      actions: [
+        SciFiButton(
+          text: '중단',
+          height: 45,
+          fontSize: 14,
+          isOutlined: true,
+          onPressed: () {
+            NfcManager.instance.stopSession();
+            Navigator.pop(context);
+            setState(() => _isScanning = false);
+          },
+        ),
+      ],
     );
 
     NfcManager.instance.startSession(
@@ -197,21 +175,23 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
 
         await NfcManager.instance.stopSession();
         
-        if (!mounted) return;
-        Navigator.pop(context);
-        setState(() => _isScanning = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('탈출 성공!'), backgroundColor: Colors.green),
-        );
+        if (mounted) {
+          Navigator.pop(context);
+          setState(() => _isScanning = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('탈출 성공!'), backgroundColor: Colors.green),
+          );
+        }
 
       } catch (e) {
         await NfcManager.instance.stopSession();
-        if (!mounted) return;
-        Navigator.pop(context);
-        setState(() => _isScanning = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('탈출 실패: $e'), backgroundColor: Colors.red),
-        );
+        if (mounted) {
+          Navigator.pop(context);
+          setState(() => _isScanning = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('탈출 실패: $e'), backgroundColor: Colors.red),
+          );
+        }
       }
     });
   }
@@ -403,8 +383,8 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                                   children: [
-                                    _buildStatItem('활동 요원', '${game.counts.robbersFree}', Colors.greenAccent),
-                                    _buildStatItem('수감 인원', '${game.counts.robbersJailed}', Colors.redAccent),
+                                    StatItem(label: '활동 요원', value: '${game.counts.robbersFree}', valueColor: Colors.greenAccent),
+                                    StatItem(label: '수감 인원', value: '${game.counts.robbersJailed}', valueColor: Colors.redAccent),
                                   ],
                                 ),
                               ),
@@ -423,13 +403,4 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, Color color) {
-    return Column(
-      children: [
-        HudText(label, fontSize: 10, color: Colors.white.withValues(alpha: 0.5), fontWeight: FontWeight.normal),
-        const SizedBox(height: 8),
-        HudText(value, fontSize: 24, color: color),
-      ],
-    );
-  }
 }

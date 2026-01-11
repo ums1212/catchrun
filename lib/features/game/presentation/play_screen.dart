@@ -6,11 +6,13 @@ import 'package:catchrun/core/models/game_model.dart';
 import 'package:catchrun/core/models/participant_model.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:go_router/go_router.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:catchrun/features/game/presentation/widgets/event_popup_overlay.dart';
+import 'package:catchrun/features/game/presentation/widgets/play_widgets.dart';
 import '../../../../core/widgets/hud_text.dart';
 import '../../../../core/widgets/glass_container.dart';
 import '../../../../core/widgets/scifi_button.dart';
+import 'package:catchrun/core/widgets/stat_item.dart';
+import 'package:catchrun/core/widgets/hud_dialog.dart';
 
 
 class PlayScreen extends ConsumerStatefulWidget {
@@ -234,9 +236,9 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                                   children: [
-                                    _buildStatItem('전체', '${game.counts.robbers}', Colors.white),
-                                    _buildStatItem('수감', '${game.counts.robbersJailed}', Colors.redAccent),
-                                    _buildStatItem('활동', '${game.counts.robbersFree}', Colors.greenAccent),
+                                    StatItem(label: '전체', value: '${game.counts.robbers}', valueColor: Colors.white),
+                                    StatItem(label: '수감', value: '${game.counts.robbersJailed}', valueColor: Colors.redAccent),
+                                    StatItem(label: '활동', value: '${game.counts.robbersFree}', valueColor: Colors.greenAccent),
                                   ],
                                 ),
                               ),
@@ -329,61 +331,23 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, Color color) {
-    return Column(
-      children: [
-        HudText(label, fontSize: 10, color: Colors.white.withValues(alpha: 0.5), fontWeight: FontWeight.normal),
-        const SizedBox(height: 6),
-        HudText(value, fontSize: 24, color: color),
-      ],
-    );
-  }
 
   void _showMyQr(BuildContext context, String? uid, Color themeColor) {
     if (uid == null) return;
     
-    showGeneralDialog(
+    HudDialog.show(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: 'MyQrDialog',
-      pageBuilder: (context, _, __) => Center(
-        child: GlassContainer(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              HudText('신원 식별 QR', fontSize: 18, color: themeColor),
-              const SizedBox(height: 16),
-              const HudText(
-                '구출을 위해 아군에게 보여주거나\n식별을 위해 경찰에게 보여주세요.', 
-                fontWeight: FontWeight.normal,
-                fontSize: 12,
-                color: Colors.white70,
-              ),
-              const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: QrImageView(
-                  data: 'catchrun:${widget.gameId}:$uid',
-                  version: QrVersions.auto,
-                  size: 200.0,
-                ),
-              ),
-              const SizedBox(height: 24),
-              SciFiButton(
-                text: '닫기',
-                height: 45,
-                fontSize: 14,
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
+      title: '신원 식별 QR',
+      titleColor: themeColor,
+      content: MyQrDialogContent(gameId: widget.gameId, uid: uid),
+      actions: [
+        SciFiButton(
+          text: '닫기',
+          height: 45,
+          fontSize: 14,
+          onPressed: () => Navigator.pop(context),
         ),
-      ),
+      ],
     );
   }
 }

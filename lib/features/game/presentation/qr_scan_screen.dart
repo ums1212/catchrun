@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
@@ -94,8 +93,10 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
         _showSuccess('아군 석방 완료');
       }
       
-      if (mounted && context.canPop()) {
-        context.pop();
+      if (mounted) {
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
       }
 
     } catch (e) {
@@ -105,25 +106,27 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
   }
 
   void _showError(String message) {
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: HudText(message, fontSize: 13, color: Colors.white),
-        backgroundColor: Colors.redAccent.withValues(alpha: 0.8),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: HudText(message, fontSize: 13, color: Colors.white),
+          backgroundColor: Colors.redAccent.withValues(alpha: 0.8),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _showSuccess(String message) {
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: HudText(message, fontSize: 13, color: Colors.white),
-        backgroundColor: Colors.greenAccent.withValues(alpha: 0.8),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: HudText(message, fontSize: 13, color: Colors.white),
+          backgroundColor: Colors.greenAccent.withValues(alpha: 0.8),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
