@@ -1,0 +1,4 @@
+{
+    "apiBaseUrl": "https://api.catchrun.com",
+    "environment": "prod"
+}
