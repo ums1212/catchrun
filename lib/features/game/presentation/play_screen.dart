@@ -24,6 +24,7 @@ class PlayScreen extends ConsumerStatefulWidget {
 class _PlayScreenState extends ConsumerState<PlayScreen> {
   Timer? _timer;
   Duration _remainingTime = Duration.zero;
+  Duration _serverTimeOffset = Duration.zero;
   Map<String, dynamic>? _lastEvent;
   String? _lastEventId;
   bool _isProcessingAction = false; // 디바운스용
@@ -31,6 +32,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
   @override
   void initState() {
     super.initState();
+    _initServerTimeOffset();
     _startTimer();
   }
 
@@ -38,6 +40,20 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  void _initServerTimeOffset() async {
+    try {
+      final offset = await ref.read(gameRepositoryProvider).calculateServerTimeOffset();
+      if (mounted) {
+        setState(() {
+          _serverTimeOffset = offset;
+        });
+      }
+    } catch (e) {
+      // offset 계산 실패 시 기본값(Duration.zero) 유지
+      // 네트워크 오류나 Firestore 접근 실패 시 발생 가능
+    }
   }
 
   void _startTimer() {
@@ -131,8 +147,10 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
 
             final themeColor = isCop ? Colors.blueAccent : Colors.redAccent;
 
+            // 서버 시간 기준으로 남은 시간 계산
             if (game.endsAt != null) {
-              _remainingTime = game.endsAt!.difference(DateTime.now());
+              final estimatedServerTime = DateTime.now().add(_serverTimeOffset);
+              _remainingTime = game.endsAt!.difference(estimatedServerTime);
               if (_remainingTime.isNegative) _remainingTime = Duration.zero;
             }
 

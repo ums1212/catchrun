@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:catchrun/core/models/game_model.dart';
@@ -696,5 +697,66 @@ class GameRepository {
     return String.fromCharCodes(Iterable.generate(
       length, (_) => chars.codeUnitAt(rnd.nextInt(chars.length)),
     ));
+  }
+
+  /// 서버 시간과 로컬 시간의 offset을 계산합니다.
+  /// 이를 통해 기기마다 다른 시스템 시간에도 동기화된 타이머를 구현할 수 있습니다.
+  Future<Duration> calculateServerTimeOffset() async {
+    DocumentReference? docRef;
+    
+    try {
+      final localBefore = DateTime.now();
+      
+      // Firestore에 더미 문서를 작성하여 서버 타임스탬프 획득
+      docRef = _firestore.collection('_timesync').doc();
+      
+      // 타임아웃 설정 (5초)
+      await docRef.set({
+        'createdAt': FieldValue.serverTimestamp(),
+      }).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException('Server time sync timeout'),
+      );
+      
+      // 작성된 문서를 읽어서 서버 타임스탬프 확인
+      final doc = await docRef.get().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException('Server time sync timeout'),
+      );
+      
+      final data = doc.data() as Map<String, dynamic>?;
+      final serverTime = (data?['createdAt'] as Timestamp?)?.toDate();
+      
+      if (serverTime == null) {
+        return Duration.zero;
+      }
+      
+      final localAfter = DateTime.now();
+      // 네트워크 왕복 시간의 절반을 보정
+      final estimatedLocalTime = localBefore.add(
+        Duration(milliseconds: localAfter.difference(localBefore).inMilliseconds ~/ 2)
+      );
+      
+      // offset = 서버 시간 - 로컬 시간
+      return serverTime.difference(estimatedLocalTime);
+    } catch (e) {
+      // 네트워크 오류, Firestore 접근 실패, 타임아웃 등의 경우
+      // Duration.zero를 반환하여 로컬 시간을 사용하도록 fallback
+      return Duration.zero;
+    } finally {
+      // 더미 문서 삭제 (실패해도 무시)
+      if (docRef != null) {
+        try {
+          await docRef.delete().timeout(const Duration(seconds: 3));
+        } catch (_) {
+          // 문서 삭제 실패는 무시 (자동으로 정리될 것임)
+        }
+      }
+    }
+  }
+
+  /// offset을 적용하여 현재 추정 서버 시간을 반환합니다.
+  DateTime getEstimatedServerTime(Duration offset) {
+    return DateTime.now().add(offset);
   }
 }

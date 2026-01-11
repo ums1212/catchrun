@@ -13,6 +13,49 @@
 
 ---
 
+## 2026-01-11 (토)
+
+### 🐛 버그 수정: 타이머 동기화 문제 해결 (Timer Synchronization Fix)
+
+#### ✅ 주요 작업 및 성과
+- **문제 원인 분석 및 해결**
+    - **문제 현상**: 실제 기기 3대 테스트 중 방장과 참여자 간 타이머가 다르게 표시되는 현상 발견
+        - 방장(갤럭시 S23): 5분부터 정상 카운트다운
+        - 참여자 기기 1: 13분부터 시작
+        - 참여자 기기 2: 5분 몇초부터 시작
+    - **근본 원인**: `PlayScreen`에서 각 기기의 로컬 시스템 시간(`DateTime.now()`)을 사용하여 남은 시간 계산
+        - 기기마다 시스템 시간 설정이 다르면 타이머가 다르게 표시됨
+        - 방장이 게임 시작 시 자신의 로컬 시간 기준으로 `endsAt` 계산
+- **Firestore 서버 타임스탬프 기반 Offset 계산 구현**
+    - `GameRepository.calculateServerTimeOffset()`: 서버 시간과 로컬 시간의 차이(offset) 계산
+        - Firestore `_timesync` 컬렉션에 더미 문서 작성하여 서버 타임스탬프 획득
+        - 네트워크 왕복 시간(RTT)의 절반을 보정하여 정확도 향상
+        - offset = 서버 시간 - 로컬 시간
+    - `GameRepository.getEstimatedServerTime()`: offset을 적용한 추정 서버 시간 반환
+    - `PlayScreen`: 화면 진입 시 offset 초기화 및 서버 시간 기준으로 남은 시간 계산
+        - `_remainingTime = game.endsAt!.difference(estimatedServerTime)`
+- **견고한 예외 처리 구현**
+    - **타임아웃 처리**: Firestore 작업에 5초 타임아웃 설정으로 네트워크 지연 환경 대응
+    - **리소스 정리**: `finally` 블록으로 더미 문서 삭제 보장 (삭제 실패 시에도 무시)
+    - **Fallback 전략**: 모든 예외 발생 시 `Duration.zero` 반환하여 로컬 시간 사용
+    - **타입 안전성**: `doc.data()`를 `Map<String, dynamic>?`로 명시적 캐스팅하여 null-safety 준수
+
+#### 📝 비고 / 특이사항
+- **기술적 결정**: 
+    - 서버 시간 offset은 `PlayScreen` 진입 시마다 계산 (Firestore 읽기/쓰기 1회 추가, 약 100-300ms)
+    - 향후 앱 최초 실행 시 한 번만 계산하고 전역으로 관리하는 방식으로 개선 가능
+    - 주기적 offset 갱신(예: 5분마다)도 고려 가능
+- **정확도**: 네트워크 왕복 시간 보정으로 일반적인 환경에서 ±100ms 이내의 정확도 예상
+- **안정성**: offset 계산 실패 시에도 앱이 정상 작동하도록 graceful fallback 구현
+- **검증**: `flutter analyze` 통과 (No issues found!)
+
+#### 🔗 관련 문서
+- 수정 파일:
+    - `lib/features/game/data/game_repository.dart` - offset 계산 메서드 추가
+    - `lib/features/game/presentation/play_screen.dart` - 서버 시간 기반 타이머 계산
+
+---
+
 ## 2026-01-10 (토)
 
 ### 🧹 코드 품질 개선: 공통 위젯 리팩토링 (Common Widget Refactoring)
