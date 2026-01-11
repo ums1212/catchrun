@@ -624,13 +624,14 @@ class GameRepository {
       final now = DateTime.now();
       final rescueDisabledUntil = now.add(const Duration(minutes: 5));
 
-      // 1. 도둑 상태 업데이트 (자유 상태 + 구출 제한)
+      // 1. 도둑 상태 업데이트 (자유 상태 + 구출 제한 + 점수 차감)
       transaction.update(participantRef, {
         'state': RobberState.free.name,
         'releasedAt': FieldValue.serverTimestamp(),
         'rescueDisabledUntil': Timestamp.fromDate(rescueDisabledUntil),
         'lastStateChangedAt': FieldValue.serverTimestamp(),
         'stats.keyUsed': true,
+        'score': FieldValue.increment(-70), // 열쇠 사용 점수 차감: -70
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
