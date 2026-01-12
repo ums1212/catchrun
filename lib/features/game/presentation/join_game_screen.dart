@@ -2,6 +2,7 @@ import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:catchrun/core/providers/app_bar_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:catchrun/core/widgets/hud_text.dart';
@@ -104,7 +105,7 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
       contentText: 'QR 코드 스캔을 위해 카메라 권한이 필요합니다. 설정 화면에서 권한을 허용해주세요.',
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
           child: HudText('취소', color: Colors.white.withValues(alpha: 0.6)),
         ),
         SciFiButton(
@@ -112,7 +113,7 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
           height: 45,
           fontSize: 14,
           onPressed: () async {
-            final navigator = Navigator.of(context);
+            final navigator = Navigator.of(context, rootNavigator: true);
             await openAppSettings();
             if (mounted) navigator.pop();
           },
@@ -179,157 +180,136 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
           content: HudText('참가 중 오류 발생: $e'),
         ),
       );
-        setState(() {
-          _isLoading = false;
-          _isScanning = true;
-        });
-      }
+      setState(() {
+        _isLoading = false;
+        _isScanning = true;
+      });
     }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const HudText(
-          '게임 참가',
-          fontSize: 20,
-          letterSpacing: 2,
-          color: Colors.cyanAccent,
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.cyanAccent),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.cyanAccent,
-          indicatorWeight: 3,
-          labelColor: Colors.cyanAccent,
-          unselectedLabelColor: Colors.white38,
-          tabs: const [
-            Tab(icon: Icon(Icons.numbers_rounded), text: '코드 입력'),
-            Tab(icon: Icon(Icons.qr_code_scanner_rounded), text: 'QR 스캔'),
-          ],
-        ),
-      ),
-      body: OrientationBuilder(
-        builder: (context, orientation) {
-          final backgroundImage = orientation == Orientation.portrait
-              ? 'assets/image/profile_setting_portrait.png'
-              : 'assets/image/profile_setting_landscape.png';
+    // AppBar 설정 업데이트
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(appBarProvider.notifier).state = const AppBarConfig(
+          title: '게임 참가',
+          centerTitle: true,
+        );
+      }
+    });
 
-          return SizedBox.expand(
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Image.asset(backgroundImage, fit: BoxFit.cover),
-                ),
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.8),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.6),
-                          Colors.black.withValues(alpha: 0.9),
-                        ],
-                        stops: const [0.0, 0.5, 1.0],
-                      ),
-                    ),
-                  ),
-                ),
-                SafeArea(
-                  child: TabBarView(
-                    controller: _tabController,
-                    physics: const NeverScrollableScrollPhysics(),
+    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight;
+    
+    return Column(
+      children: [
+        // AppBar 구역 확보를 위한 여백
+        SizedBox(height: topPadding),
+        // TabBar
+        Container(
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+            ),
+          ),
+          child: TabBar(
+            controller: _tabController,
+            indicatorColor: Colors.cyanAccent,
+            indicatorWeight: 3,
+            labelColor: Colors.cyanAccent,
+            unselectedLabelColor: Colors.white38,
+            tabs: const [
+              Tab(icon: Icon(Icons.numbers_rounded), text: '코드 입력'),
+              Tab(icon: Icon(Icons.qr_code_scanner_rounded), text: 'QR 스캔'),
+            ],
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              // TAB 1: CODE INPUT
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // TAB 1: CODE INPUT
-                      SingleChildScrollView(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              const SizedBox(height: 10),
-                              HudSectionHeader(title: '게임 코드 정보'),
-                              const SizedBox(height: 24),
-                              HudTextField(
-                                controller: _gameCodeController,
-                                labelText: '게임 번호 (9자리)',
-                                hintText: '예: 123456789',
-                                keyboardType: TextInputType.number,
-                                validator: (value) => 
-                                    (value?.length != 9) ? '9자리 번호를 입력해주세요.' : null,
-                              ),
-                              const SizedBox(height: 20),
-                              HudTextField(
-                                controller: _inviteCodeController,
-                                labelText: '초대 코드 (6자리)',
-                                hintText: '예: 123456',
-                                keyboardType: TextInputType.number,
-                                validator: (value) => 
-                                    (value?.length != 6) ? '6자리 코드를 입력해주세요.' : null,
-                              ),
-                              const SizedBox(height: 48),
-                              if (_isLoading)
-                                const Center(child: CircularProgressIndicator(color: Colors.cyanAccent))
-                              else
-                                SciFiButton(
-                                  text: '게임 참가하기',
-                                  icon: Icons.login_rounded,
-                                  onPressed: _joinGame,
-                                ),
-                            ],
-                          ),
+                      const SizedBox(height: 10),
+                      HudSectionHeader(title: '게임 코드 정보'),
+                      const SizedBox(height: 24),
+                      HudTextField(
+                        controller: _gameCodeController,
+                        labelText: '게임 번호 (9자리)',
+                        hintText: '예: 123456789',
+                        keyboardType: TextInputType.number,
+                        validator: (value) => 
+                            (value?.length != 9) ? '9자리 번호를 입력해주세요.' : null,
+                      ),
+                      const SizedBox(height: 20),
+                      HudTextField(
+                        controller: _inviteCodeController,
+                        labelText: '초대 코드 (6자리)',
+                        hintText: '예: 123456',
+                        keyboardType: TextInputType.number,
+                        validator: (value) => 
+                            (value?.length != 6) ? '6자리 코드를 입력해주세요.' : null,
+                      ),
+                      const SizedBox(height: 48),
+                      if (_isLoading)
+                        const Center(child: CircularProgressIndicator(color: Colors.cyanAccent))
+                      else
+                        SciFiButton(
+                          text: '게임 참가하기',
+                          icon: Icons.login_rounded,
+                          onPressed: _joinGame,
                         ),
-                      ),
-                      // TAB 2: QR SCAN
-                      Stack(
-                        children: [
-                          if (_isScanning)
-                            MobileScanner(onDetect: _onDetect),
-                          // QR Scan Overlay
-                          if (_isScanning)
-                            const QrScanOverlay(),
-                          if (_isPermissionDenied && !_isScanning)
-                            Center(
-                              child: GlassContainer(
-                                padding: const EdgeInsets.all(32),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.camera_alt_outlined, size: 64, color: Colors.cyanAccent),
-                                    const SizedBox(height: 24),
-                                    const HudText('카메라 권한이 거부되었습니다.', fontSize: 16),
-                                    const SizedBox(height: 32),
-                                    SciFiButton(
-                                      text: '권한 설정 확인',
-                                      onPressed: _checkCameraPermission,
-                                      height: 50,
-                                      fontSize: 14,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          if (_isLoading)
-                            const Center(child: CircularProgressIndicator(color: Colors.cyanAccent)),
-                        ],
-                      ),
                     ],
                   ),
                 ),
-              ],
-            ),
-          );
-        },
-      ),
+              ),
+              // TAB 2: QR SCAN
+              Stack(
+                children: [
+                  if (_isScanning)
+                    MobileScanner(onDetect: _onDetect),
+                  // QR Scan Overlay
+                  if (_isScanning)
+                    const QrScanOverlay(),
+                  if (_isPermissionDenied && !_isScanning)
+                    Center(
+                      child: GlassContainer(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.camera_alt_outlined, size: 64, color: Colors.cyanAccent),
+                            const SizedBox(height: 24),
+                            const HudText('카메라 권한이 거부되었습니다.', fontSize: 16),
+                            const SizedBox(height: 32),
+                            SciFiButton(
+                              text: '권한 설정 확인',
+                              onPressed: _checkCameraPermission,
+                              height: 50,
+                              fontSize: 14,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (_isLoading)
+                    const Center(child: CircularProgressIndicator(color: Colors.cyanAccent)),
+                ],
+              ),
+            ],
+          ),
+        ),
+        // Bottom SafeArea
+        SizedBox(height: MediaQuery.of(context).padding.bottom),
+      ],
     );
   }
+
 }

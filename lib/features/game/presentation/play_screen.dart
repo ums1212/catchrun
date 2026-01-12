@@ -5,6 +5,7 @@ import 'package:catchrun/features/game/data/game_repository.dart';
 import 'package:catchrun/core/models/game_model.dart';
 import 'package:catchrun/core/models/participant_model.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
+import 'package:catchrun/core/providers/app_bar_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:catchrun/features/game/presentation/widgets/event_popup_overlay.dart';
 import 'package:catchrun/features/game/presentation/widgets/play_widgets.dart';
@@ -13,7 +14,6 @@ import '../../../../core/widgets/glass_container.dart';
 import '../../../../core/widgets/scifi_button.dart';
 import 'package:catchrun/core/widgets/stat_item.dart';
 import 'package:catchrun/core/widgets/hud_dialog.dart';
-
 
 class PlayScreen extends ConsumerStatefulWidget {
   final String gameId;
@@ -29,7 +29,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
   Duration _serverTimeOffset = Duration.zero;
   Map<String, dynamic>? _lastEvent;
   String? _lastEventId;
-  bool _isProcessingAction = false; // 디바운스용
+  bool _isProcessingAction = false;
 
   @override
   void initState() {
@@ -53,8 +53,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
         });
       }
     } catch (e) {
-      // offset 계산 실패 시 기본값(Duration.zero) 유지
-      // 네트워크 오류나 Firestore 접근 실패 시 발생 가능
+      // Ignore offset calculation error
     }
   }
 
@@ -72,17 +71,12 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
     final gameAsync = ref.read(gameRepositoryProvider).watchGame(widget.gameId);
     gameAsync.first.then((game) {
       if (game == null || game.status != GameStatus.playing) return;
-
       final currentUser = ref.read(userProvider).value;
       if (game.hostUid != currentUser?.uid) return;
-
-      // 1. 시간 종료 체크
       if (game.endsAt != null && DateTime.now().isAfter(game.endsAt!)) {
         ref.read(gameRepositoryProvider).finishGame(game.id);
-        return;
       }
     });
-    
     setState(() {});
   }
 
@@ -94,37 +88,27 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final gameAsync = ref.watch(gameRepositoryProvider).watchGame(widget.gameId);
-    final participantsAsync = ref.watch(gameRepositoryProvider).watchParticipants(widget.gameId);
-    final eventAsync = ref.watch(gameRepositoryProvider).watchLatestEvent(widget.gameId);
+    final gameStream = ref.watch(gameRepositoryProvider).watchGame(widget.gameId);
+    final participantsStream = ref.watch(gameRepositoryProvider).watchParticipants(widget.gameId);
+    final eventStream = ref.watch(gameRepositoryProvider).watchLatestEvent(widget.gameId);
     final currentUser = ref.watch(userProvider).value;
 
     return StreamBuilder<GameModel?>(
-      stream: gameAsync,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Scaffold(
-            backgroundColor: Colors.black,
-            body: Center(child: CircularProgressIndicator(color: Colors.cyanAccent)),
-          );
+      stream: gameStream,
+      builder: (context, gameSnapshot) {
+        if (!gameSnapshot.hasData) {
+          return const Center(child: CircularProgressIndicator(color: Colors.cyanAccent));
         }
-
-        final game = snapshot.data!;
-        
+        final game = gameSnapshot.data!;
         if (game.status == GameStatus.finished) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              context.go('/result/${widget.gameId}');
-            }
+            if (mounted) context.go('/result/${widget.gameId}');
           });
-          return const Scaffold(
-            backgroundColor: Colors.black,
-            body: Center(child: HudText('게임이 종료되었습니다.', fontSize: 18)),
-          );
+          return const Center(child: HudText('게임이 종료되었습니다.', fontSize: 18));
         }
 
         return StreamBuilder<List<ParticipantModel>>(
-          stream: participantsAsync,
+          stream: participantsStream,
           builder: (context, partSnapshot) {
             final participants = partSnapshot.data ?? [];
             final myParticipant = participants.firstWhere(
@@ -134,196 +118,129 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
 
             final isCop = myParticipant.role == ParticipantRole.cop;
             final isJailed = myParticipant.state == RobberState.jailed;
-            
-            if (!isCop && isJailed) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  context.go('/prison/${widget.gameId}');
-                }
-              });
-              return const Scaffold(
-                backgroundColor: Colors.black,
-                body: Center(child: CircularProgressIndicator(color: Colors.redAccent)),
-              );
-            }
-
             final themeColor = isCop ? Colors.blueAccent : Colors.redAccent;
 
-            // 서버 시간 기준으로 남은 시간 계산
+            if (!isCop && isJailed) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) context.go('/prison/${widget.gameId}');
+              });
+              return const Center(child: CircularProgressIndicator(color: Colors.redAccent));
+            }
+
+            // AppBar 설정 업데이트
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                ref.read(appBarProvider.notifier).state = AppBarConfig(
+                  title: isCop ? 'MISSION: COP' : 'MISSION: RUN',
+                  centerTitle: true,
+                  titleColor: themeColor,
+                  actions: [
+                    IconButton(
+                      onPressed: () => _showExitDialog(context),
+                      icon: const Icon(Icons.close_rounded, color: Colors.white60),
+                    ),
+                  ],
+                );
+              }
+            });
+
             if (game.endsAt != null) {
               final estimatedServerTime = DateTime.now().add(_serverTimeOffset);
               _remainingTime = game.endsAt!.difference(estimatedServerTime);
               if (_remainingTime.isNegative) _remainingTime = Duration.zero;
             }
 
-            return Scaffold(
-              backgroundColor: Colors.black,
-              extendBodyBehindAppBar: true,
-              appBar: AppBar(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                title: HudText(
-                  isCop ? '미션: 추격' : '미션: 생존',
-                  color: themeColor,
-                  fontSize: 18,
-                ),
-                centerTitle: true,
-                automaticallyImplyLeading: false,
-              ),
-              body: OrientationBuilder(
-                builder: (context, orientation) {
-                  return Stack(
+            return Stack(
+              children: [
+                SafeArea(
+                  child: Column(
                     children: [
-                      // Background Image
-                      Positioned.fill(
-                        child: Image.asset(
-                          orientation == Orientation.portrait
-                              ? 'assets/image/profile_setting_portrait.png'
-                              : 'assets/image/profile_setting_landscape.png',
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      // Gradient Overlay
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withValues(alpha: 0.7),
-                                Colors.black.withValues(alpha: 0.3),
-                                Colors.black.withValues(alpha: 0.8),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      
-                      SafeArea(
+                      const SizedBox(height: kToolbarHeight),
+                      const SizedBox(height: 20),
+                      GlassContainer(
+                        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
                         child: Column(
                           children: [
-                            const SizedBox(height: 20),
-                            // Timer Section
-                            GlassContainer(
-                              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
-                              child: Column(
-                                children: [
-                                  HudText(
-                                    '남은 시간', 
-                                    fontSize: 14, 
-                                    color: Colors.white.withValues(alpha: 0.6),
-                                    letterSpacing: 2,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  HudText(
-                                    _formatDuration(_remainingTime),
-                                    fontSize: 64,
-                                    color: themeColor,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            
-                            const SizedBox(height: 24),
-                            
-                            // Status Board
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              child: GlassContainer(
-                                padding: const EdgeInsets.all(24),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                  children: [
-                                    StatItem(label: '전체', value: '${game.counts.robbers}', valueColor: Colors.white),
-                                    StatItem(label: '수감', value: '${game.counts.robbersJailed}', valueColor: Colors.redAccent),
-                                    StatItem(label: '활동', value: '${game.counts.robbersFree}', valueColor: Colors.greenAccent),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            
-                            const Spacer(),
-                            
-                            // Action Buttons
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 24),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      if (!isCop) ...[
-                                        Expanded(
-                                          child: SciFiButton(
-                                            text: '내 QR',
-                                            isOutlined: true,
-                                            height: 56,
-                                            onPressed: () => _showMyQr(context, currentUser?.uid, themeColor),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                      ],
-                                      Expanded(
-                                        child: SciFiButton(
-                                          text: isCop ? '대상 스캔' : '팀원 구출',
-                                          height: 56,
-                                          onPressed: _isProcessingAction ? () {} : () async {
-                                            setState(() => _isProcessingAction = true);
-                                            context.push('/qr-scan/${widget.gameId}?isCop=$isCop');
-                                            await Future.delayed(const Duration(seconds: 2));
-                                            if (mounted) setState(() => _isProcessingAction = false);
-                                          },
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 20),
-                                  // Guidance
-                                  GlassContainer(
-                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                                    child: HudText(
-                                      isCop 
-                                        ? '대상을 찾아 식별코드를 스캔하세요' 
-                                        : '추격을 피하고 수감된 동료를 도우세요',
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.normal,
-                                      color: themeColor.withValues(alpha: 0.8),
-                                      letterSpacing: 1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 40),
+                            HudText('남은 시간', fontSize: 14, color: Colors.white.withValues(alpha: 0.6), letterSpacing: 2),
+                            const SizedBox(height: 8),
+                            HudText(_formatDuration(_remainingTime), fontSize: 64, color: themeColor, fontWeight: FontWeight.w900),
                           ],
                         ),
                       ),
-                      
-                      // Event Popup Overlay
-                      StreamBuilder<Map<String, dynamic>?>(
-                        stream: eventAsync,
-                        builder: (context, eventSnapshot) {
-                          final event = eventSnapshot.data;
-                          if (event != null && event['id'] != _lastEventId) {
-                            _lastEvent = event;
-                            _lastEventId = event['id'];
-                          }
-                          
-                          return EventPopupOverlay(
-                            event: _lastEvent,
-                            onDismiss: () {
-                              setState(() {
-                                _lastEvent = null;
-                              });
-                            },
-                          );
-                        },
+                      const SizedBox(height: 24),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: GlassContainer(
+                          padding: const EdgeInsets.all(24),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              StatItem(label: '전체', value: '${game.counts.robbers}', valueColor: Colors.white),
+                              StatItem(label: '수감', value: '${game.counts.robbersJailed}', valueColor: Colors.redAccent),
+                              StatItem(label: '활동', value: '${game.counts.robbersFree}', valueColor: Colors.greenAccent),
+                            ],
+                          ),
+                        ),
                       ),
+                      const Spacer(),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                if (!isCop) ...[
+                                  Expanded(
+                                    child: SciFiButton(
+                                      text: '내 QR',
+                                      isOutlined: true,
+                                      height: 56,
+                                      onPressed: () => _showMyQr(context, currentUser?.uid, themeColor),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                ],
+                                Expanded(
+                                  child: SciFiButton(
+                                    text: isCop ? '대상 스캔' : '팀원 구출',
+                                    height: 56,
+                                    onPressed: _isProcessingAction ? () {} : () async {
+                                      setState(() => _isProcessingAction = true);
+                                      context.push('/qr-scan/${widget.gameId}?isCop=$isCop');
+                                      await Future.delayed(const Duration(seconds: 2));
+                                      if (mounted) setState(() => _isProcessingAction = false);
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            GlassContainer(
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                              child: HudText(isCop ? '대상을 찾아 식별코드를 스캔하세요' : '추격을 피하고 수감된 동료를 도우세요', fontSize: 11, fontWeight: FontWeight.normal, color: themeColor.withValues(alpha: 0.8), letterSpacing: 1),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 40),
                     ],
-                  );
-                },
-              ),
+                  ),
+                ),
+                StreamBuilder<Map<String, dynamic>?>(
+                  stream: eventStream,
+                  builder: (context, eventSnapshot) {
+                    final event = eventSnapshot.data;
+                    if (event != null && event['id'] != _lastEventId) {
+                      _lastEvent = event;
+                      _lastEventId = event['id'];
+                    }
+                    return EventPopupOverlay(
+                      event: _lastEvent,
+                      onDismiss: () => setState(() => _lastEvent = null),
+                    );
+                  },
+                ),
+              ],
             );
           },
         );
@@ -331,24 +248,36 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
     );
   }
 
-
   void _showMyQr(BuildContext context, String? uid, Color themeColor) {
     if (uid == null) return;
-    
     HudDialog.show(
       context: context,
       title: '신원 식별 QR',
       titleColor: themeColor,
       content: MyQrDialogContent(gameId: widget.gameId, uid: uid),
       actions: [
+        SciFiButton(text: '닫기', height: 45, fontSize: 14, onPressed: () => Navigator.of(context, rootNavigator: true).pop()),
+      ],
+    );
+  }
+
+  void _showExitDialog(BuildContext context) {
+    HudDialog.show(
+      context: context,
+      title: '게임 종료',
+      contentText: '정말 게임에서 나가시겠습니까?\n진행 중인 데이터는 무효화됩니다.',
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context, rootNavigator: true).pop(), child: const HudText('취소', color: Colors.white60)),
         SciFiButton(
-          text: '닫기',
+          text: '나가기',
           height: 45,
           fontSize: 14,
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.of(context, rootNavigator: true).pop();
+            context.go('/home');
+          },
         ),
       ],
     );
   }
 }
-

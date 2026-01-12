@@ -23,6 +23,7 @@ class HudDialog extends StatelessWidget {
     required String title,
     Color titleColor = Colors.cyanAccent,
     bool barrierDismissible = true,
+    bool useRootNavigator = true,
     String? contentText,
     Widget? content,
     required List<Widget> actions,
@@ -31,6 +32,7 @@ class HudDialog extends StatelessWidget {
       context: context,
       barrierDismissible: barrierDismissible,
       barrierLabel: 'HudDialog',
+      useRootNavigator: useRootNavigator,
       pageBuilder: (context, _, __) => Center(
         child: HudDialog(
           title: title,

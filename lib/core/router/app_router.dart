@@ -1,3 +1,6 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:catchrun/core/auth/auth_repository.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:catchrun/features/auth/login_screen.dart';
@@ -11,15 +14,20 @@ import 'package:catchrun/features/game/presentation/play_screen.dart';
 import 'package:catchrun/features/game/presentation/qr_scan_screen.dart';
 import 'package:catchrun/features/game/presentation/prison_screen.dart';
 import 'package:catchrun/features/game/presentation/result_screen.dart';
+import 'package:catchrun/core/router/main_shell_wrapper.dart';
+import 'package:catchrun/core/router/game_shell_wrapper.dart';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final _shellNavigatorKey = GlobalKey<NavigatorState>();
+final _gameShellNavigatorKey = GlobalKey<NavigatorState>();
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
+    navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
+    debugLogDiagnostics: true,
     routes: [
+      // 1. Independent Screens
       GoRoute(
         path: '/splash',
         builder: (context, state) => const SplashScreen(),
@@ -32,50 +40,110 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
       ),
-      GoRoute(
-        path: '/home',
-        builder: (context, state) {
-          final isKicked = state.uri.queryParameters['kicked'] == 'true';
-          return HomeScreen(isKicked: isKicked);
-        },
+      
+      // 2. Main Shell (Home, Create, Join, Lobby)
+      ShellRoute(
+        navigatorKey: _shellNavigatorKey,
+        builder: (context, state, child) => MainShellWrapper(child: child),
+        routes: [
+          GoRoute(
+            path: '/home',
+            pageBuilder: (context, state) {
+              final isKicked = state.uri.queryParameters['kicked'] == 'true';
+              return CustomTransitionPage(
+                key: state.pageKey,
+                child: HomeScreen(isKicked: isKicked),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+              );
+            },
+          ),
+          GoRoute(
+            path: '/create-game',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const CreateGameScreen(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          ),
+          GoRoute(
+            path: '/join-game',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const JoinGameScreen(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          ),
+          GoRoute(
+            path: '/lobby/:gameId',
+            pageBuilder: (context, state) {
+              final gameId = state.pathParameters['gameId']!;
+              return CustomTransitionPage(
+                key: state.pageKey,
+                child: LobbyScreen(gameId: gameId),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+              );
+            },
+          ),
+        ],
       ),
-      GoRoute(
-        path: '/create-game',
-        builder: (context, state) => const CreateGameScreen(),
+
+      // 3. Game Shell (Play, QrScan, Prison)
+      ShellRoute(
+        navigatorKey: _gameShellNavigatorKey,
+        builder: (context, state, child) => GameShellWrapper(child: child),
+        routes: [
+          GoRoute(
+            path: '/play/:gameId',
+            pageBuilder: (context, state) {
+              final gameId = state.pathParameters['gameId']!;
+              return CustomTransitionPage(
+                key: state.pageKey,
+                child: PlayScreen(gameId: gameId),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+              );
+            },
+          ),
+          GoRoute(
+            path: '/qr-scan/:gameId',
+            pageBuilder: (context, state) {
+              final gameId = state.pathParameters['gameId']!;
+              final isCop = state.uri.queryParameters['isCop'] == 'true';
+              return CustomTransitionPage(
+                key: state.pageKey,
+                child: QrScanScreen(gameId: gameId, isCop: isCop),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+              );
+            },
+          ),
+          GoRoute(
+            path: '/prison/:gameId',
+            pageBuilder: (context, state) {
+              final gameId = state.pathParameters['gameId']!;
+              return CustomTransitionPage(
+                key: state.pageKey,
+                child: PrisonScreen(gameId: gameId),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+              );
+            },
+          ),
+        ],
       ),
-      GoRoute(
-        path: '/join-game',
-        builder: (context, state) => const JoinGameScreen(),
-      ),
-      GoRoute(
-        path: '/lobby/:gameId',
-        builder: (context, state) {
-          final gameId = state.pathParameters['gameId']!;
-          return LobbyScreen(gameId: gameId);
-        },
-      ),
-      GoRoute(
-        path: '/play/:gameId',
-        builder: (context, state) {
-          final gameId = state.pathParameters['gameId']!;
-          return PlayScreen(gameId: gameId);
-        },
-      ),
-      GoRoute(
-        path: '/qr-scan/:gameId',
-        builder: (context, state) {
-          final gameId = state.pathParameters['gameId']!;
-          final isCop = state.uri.queryParameters['isCop'] == 'true';
-          return QrScanScreen(gameId: gameId, isCop: isCop);
-        },
-      ),
-      GoRoute(
-        path: '/prison/:gameId',
-        builder: (context, state) {
-          final gameId = state.pathParameters['gameId']!;
-          return PrisonScreen(gameId: gameId);
-        },
-      ),
+
+      // 4. Result (독립적으로 두거나 Game Shell에 포함 가능, 여기서는 일단 독립)
       GoRoute(
         path: '/result/:gameId',
         builder: (context, state) {
@@ -83,7 +151,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           return ResultScreen(gameId: gameId);
         },
       ),
-
     ],
     redirect: (context, state) {
       final authState = ref.read(authStateChangesProvider);
@@ -120,17 +187,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     // 리다이렉션이 상태 변화에 따라 트리거되도록 Listenable 추가
-    refreshListenable: Listenable.merge([
-      _ValueNotifierFromProvider(ref, authStateChangesProvider),
-      _ValueNotifierFromProvider(ref, userProvider),
-    ]),
+    refreshListenable: _GoRouterRefreshStream(ref),
   );
 });
 
-// StreamProvider/FutureProvider를 Listenable로 변환해주는 helper 클래스
-class _ValueNotifierFromProvider extends ChangeNotifier {
-  final Ref ref;
-  _ValueNotifierFromProvider(this.ref, ProviderBase provider) {
-    ref.listen(provider, (_, __) => notifyListeners());
+class _GoRouterRefreshStream extends ChangeNotifier {
+  _GoRouterRefreshStream(Ref ref) {
+    ref.listen(authStateChangesProvider, (_, __) => notifyListeners());
+    ref.listen(userProvider, (_, __) => notifyListeners());
   }
 }

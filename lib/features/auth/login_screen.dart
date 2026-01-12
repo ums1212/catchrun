@@ -22,6 +22,7 @@ class LoginScreen extends ConsumerWidget {
     final authState = ref.watch(authControllerProvider);
 
     return Scaffold(
+      backgroundColor: Colors.black,
       body: AuthBackground(
         child: SafeArea(
           child: Center(

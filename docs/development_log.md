@@ -13,6 +13,44 @@
 
 ---
 
+## 2026-01-13 (월)
+
+### 🛠️ 앱바 통합 및 레이아웃 개선 (Unified AppBar & Layout Refinement)
+
+#### ✅ 주요 작업 및 성과
+- **통합 앱바 시스템 구축**
+    - `AppBarConfig`: `leading` 속성 추가로 화면별 커스텀 뒤로가기 동작 지원
+    - `MainShellWrapper` / `GameShellWrapper`: `appBarProvider`를 통한 중앙 집중식 앱바 관리
+    - `GoRouter` 기반 뒤로가기 버튼: `context.canPop()` / `context.pop()` 패턴 적용
+- **화면별 레이아웃 개선**
+    - `JoinGameScreen`: `TabBar`를 화면 본문에 직접 통합하여 앱바와 겹침 문제 해결
+    - `LobbyScreen`: 커스텀 `leading` 버튼으로 뒤로가기 시 나가기 확인 다이얼로그 표시 후 홈 이동
+    - `CreateGameScreen`: 로비 이동 시 `context.go` → `context.push`로 변경하여 네비게이션 스택 유지
+
+#### ✅ 버그 수정 및 안정성 강화
+- **컴파일 에러 해결**
+    - `LobbyScreen`: `NdefRecord`, `TypeNameFormat` 임포트 누락 수정 (`nfc_manager/ndef_record.dart`)
+    - `PrisonScreen`: NFC `pollingOptions` 필수 파라미터 추가
+    - `Share` API: deprecated `shareWithResult` → `share` 복원
+    - `NdefMessage` / `ndef.write`: 명명된 파라미터 형식 수정 (`records:`, `message:`)
+- **비동기 갭 안전성 강화**
+    - NFC 콜백 내 `Navigator` 및 `ScaffoldMessenger`를 미리 캡처하여 `mounted` 체크 후 안전하게 사용
+    - `_handleExit()`: 다이얼로그 표시 전 `mounted` 체크 및 `rootNavigator` 캡처로 위젯 언마운트 오류 방지
+
+#### 📝 비고 / 특이사항
+- **린트 상태**: `flutter analyze` 기준 에러/경고 0건. 남은 이슈는 `info` 레벨(deprecated API 권고, 비동기 갭 린트)로 앱 동작에 영향 없음
+- **아키텍처 개선**: `extendBodyBehindAppBar: true` 환경에서 각 화면이 `MediaQuery.of(context).padding.top + kToolbarHeight`로 정확한 상단 여백을 계산하도록 통일
+
+#### 🔗 관련 파일
+- `lib/core/router/main_shell_wrapper.dart` - 통합 앱바 및 뒤로가기 버튼
+- `lib/core/router/game_shell_wrapper.dart` - 게임 화면용 쉘 래퍼
+- `lib/core/providers/app_bar_provider.dart` - `leading` 속성 추가
+- `lib/features/game/presentation/lobby_screen.dart` - 커스텀 뒤로가기, NFC API 수정
+- `lib/features/game/presentation/join_game_screen.dart` - TabBar 통합, 레이아웃 수정
+- `lib/features/game/presentation/prison_screen.dart` - NFC 폴링 옵션 추가
+
+---
+
 ## 2026-01-12 (월)
 
 ### 🚀 UX 개선: 프로필 아바타 랜덤 생성 및 시각적 고도화 (Avatar Randomization & Visual Polish)

@@ -62,7 +62,14 @@ class MyApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.dark, // 다크 모드 고정 (프로젝트 성격상)
       routerConfig: router,
+      builder: (context, child) {
+        return Container(
+          color: Colors.black,
+          child: child,
+        );
+      },
     );
   }
 }

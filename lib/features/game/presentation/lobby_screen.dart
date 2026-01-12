@@ -7,10 +7,11 @@ import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:catchrun/core/providers/app_bar_provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:nfc_manager/ndef_record.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:nfc_manager/ndef_record.dart';
 import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 import 'package:app_settings/app_settings.dart';
 import 'dart:typed_data';
@@ -88,16 +89,17 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
         '🔑 초대 코드: ${game.inviteCode}\n\n'
         '앱을 실행하고 코드 입력 또는 QR 스캔으로 참가하세요!';
     
-    await SharePlus.instance.share(
-      ShareParams(
-        text: message,
-        subject: '${game.title} 게임 초대',
-      ),
+    await Share.share(
+      message,
+      subject: '${game.title} 게임 초대',
     );
   }
 
   Future<void> _handleExit() async {
     if (_isExiting) return;
+    if (!mounted) return;
+    
+    final navigator = Navigator.of(context, rootNavigator: true);
     
     final proceed = await HudDialog.show<bool>(
       context: context,
@@ -105,14 +107,14 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
       contentText: '대기방에서 나가시겠습니까?',
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context, false),
+          onPressed: () => navigator.pop(false),
           child: HudText('취소', color: Colors.white.withValues(alpha: 0.6)),
         ),
         SciFiButton(
           text: '나가기',
           height: 45,
           fontSize: 14,
-          onPressed: () => Navigator.pop(context, true),
+          onPressed: () => navigator.pop(true),
         ),
       ],
     );
@@ -120,7 +122,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
     if (proceed == true && mounted) {
       setState(() => _isExiting = true);
       await _leaveGameSilently();
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) context.go('/home');
     }
   }
 
@@ -135,7 +137,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
           contentText: 'NFC 기능이 꺼져 있거나 지원되지 않는 기기입니다. 설정에서 NFC를 활성화해 주세요.',
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
               child: HudText('취소', color: Colors.white.withValues(alpha: 0.6)),
             ),
             SciFiButton(
@@ -143,7 +145,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
               height: 45,
               fontSize: 14,
               onPressed: () async {
-                final navigator = Navigator.of(context);
+                final navigator = Navigator.of(context, rootNavigator: true);
                 await AppSettings.openAppSettings(type: AppSettingsType.nfc);
                 if (mounted) navigator.pop();
               },
@@ -187,18 +189,21 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
         TextButton(
           onPressed: () {
             NfcManager.instance.stopSession();
-            Navigator.pop(context);
+            Navigator.of(context, rootNavigator: true).pop();
           },
           child: HudText('등록 취소', color: Colors.white.withValues(alpha: 0.6)),
         ),
       ],
     );
 
+    if (!context.mounted) return;
+    final navigatorState = Navigator.of(context, rootNavigator: true);
+    final messengerState = ScaffoldMessenger.of(context);
+
     NfcManager.instance.startSession(
       pollingOptions: {
         NfcPollingOption.iso14443,
         NfcPollingOption.iso15693,
-        NfcPollingOption.iso18092,
       },
       onDiscovered: (NfcTag tag) async {
         try {
@@ -215,8 +220,8 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
           await NfcManager.instance.stopSession();
         
           if (mounted) {
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
+            navigatorState.pop();
+            messengerState.showSnackBar(
               SnackBar(
                 backgroundColor: Colors.cyanAccent.withValues(alpha: 0.8),
                 content: const HudText('NFC 열쇠 등록 성공!', color: Colors.black),
@@ -226,8 +231,8 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
         } catch (e) {
           await NfcManager.instance.stopSession();
           if (mounted) {
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
+            navigatorState.pop();
+            messengerState.showSnackBar(
               SnackBar(
                 backgroundColor: Colors.redAccent,
                 content: HudText('오류 발생: $e'),
@@ -250,248 +255,203 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
         if (didPop) return;
         _handleExit();
       },
-      child: StreamBuilder(
+      child: StreamBuilder<GameModel?>(
         stream: gameAsync,
         builder: (context, gameSnapshot) {
           if (gameSnapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              backgroundColor: Colors.black,
-              body: Center(child: CircularProgressIndicator(color: Colors.cyanAccent)),
-            );
+            return const Center(child: CircularProgressIndicator(color: Colors.cyanAccent));
           }
 
           final game = gameSnapshot.data;
           if (game == null) {
-            return const Scaffold(
-              backgroundColor: Colors.black,
-              body: Center(child: HudText('게임을 찾을 수 없습니다.', color: Colors.redAccent)),
-            );
+            return const Center(child: HudText('게임을 찾을 수 없습니다.', color: Colors.redAccent));
           }
 
           if (game.status == GameStatus.playing) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) context.go('/play/${game.id}');
             });
-            return const Scaffold(
-              backgroundColor: Colors.black,
-              body: Center(child: HudText('미션 시작!', fontSize: 24, color: Colors.cyanAccent)),
-            );
+            return const Center(child: HudText('미션 시작!', fontSize: 24, color: Colors.cyanAccent));
           }
 
           if (game.status == GameStatus.finished) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted && !_isExiting) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
+                  const SnackBar(
                     backgroundColor: Colors.redAccent,
-                    content: const HudText('게임을 찾을 수 없거나 종료되었습니다.'),
+                    content: HudText('게임을 찾을 수 없거나 종료되었습니다.'),
                   ),
                 );
-                Navigator.of(context).popUntil((route) => route.isFirst);
+                context.go('/home');
               }
             });
-            return const Scaffold(
-              backgroundColor: Colors.black,
-              body: Center(child: HudText('본부로 복귀 중...', fontSize: 18)),
-            );
+            return const Center(child: HudText('본부로 복귀 중...', fontSize: 18));
           }
 
-          return Scaffold(
-            extendBodyBehindAppBar: true,
-            backgroundColor: Colors.black,
-            appBar: AppBar(
-              title: const HudText(
-                '전투 대기실',
-                fontSize: 20,
-                letterSpacing: 2,
-                color: Colors.cyanAccent,
-              ),
-              centerTitle: true,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              iconTheme: const IconThemeData(color: Colors.cyanAccent),
-              actions: [
-                IconButton(
-                  onPressed: () => _shareGame(game),
-                  icon: const Icon(Icons.share_rounded, color: Colors.cyanAccent),
+          // AppBar 설정 업데이트
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              ref.read(appBarProvider.notifier).state = AppBarConfig(
+                title: '전투 대기실',
+                centerTitle: true,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                  onPressed: () => _handleExit(),
                 ),
-              ],
-            ),
-            body: OrientationBuilder(
-              builder: (context, orientation) {
-                final backgroundImage = orientation == Orientation.portrait
-                    ? 'assets/image/profile_setting_portrait.png'
-                    : 'assets/image/profile_setting_landscape.png';
-
-                return SizedBox.expand(
-                  child: Stack(
-                    children: [
-                      // Background Image
-                      Positioned.fill(
-                        child: Image.asset(backgroundImage, fit: BoxFit.cover),
-                      ),
-                      // Dark Overlay
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withValues(alpha: 0.7),
-                                Colors.black.withValues(alpha: 0.3),
-                                Colors.black.withValues(alpha: 0.8),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Main Content
-                      SafeArea(
-                        child: Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: LobbyGameCodeCard(game: game),
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              child: HudSectionHeader(title: '참여 목록'),
-                            ),
-                            Expanded(
-                              child: StreamBuilder(
-                                stream: participantsAsync,
-                                builder: (context, partSnapshot) {
-                                  final participants = partSnapshot.data ?? [];
-                                  final currentUser = ref.watch(userProvider).value;
-
-                                  return ListView.builder(
-                                    padding: const EdgeInsets.all(16),
-                                    itemCount: participants.length,
-                                    itemBuilder: (context, index) {
-                                      final p = participants[index];
-                                      final isCurrentUser = p.uid == currentUser?.uid;
-                                      final isHost = p.uid == game.hostUid;
-                                      final isRoomHost = game.hostUid == currentUser?.uid;
-
-                                      return LobbyParticipantTile(
-                                        participant: p,
-                                        isCurrentUser: isCurrentUser,
-                                        isHost: isHost,
-                                        isRoomHost: isRoomHost,
-                                        onTap: isRoomHost
-                                            ? () {
-                                                if (isCurrentUser) {
-                                                  _showRoleChangeBottomSheet(context, game, p);
-                                                } else {
-                                                  _showParticipantActionBottomSheet(context, game, p);
-                                                }
-                                              }
-                                            : null,
-                                      );
-                                    },
-                                  );
-                                },
-                              ),
-                            ),
-                            // Action Section
-                            StreamBuilder(
-                              stream: participantsAsync,
-                              builder: (context, partSnapshot) {
-                                final participants = partSnapshot.data ?? [];
-                                final currentUser = ref.watch(userProvider).value;
-                                final isHost = game.hostUid == currentUser?.uid;
-
-                                return Padding(
-                                  padding: const EdgeInsets.all(24.0),
-                                  child: Column(
-                                    children: [
-                                      if (isHost) ...[
-                                        SciFiButton(
-                                          text: '미션 개시',
-                                          height: 54,
-                                          fontSize: 18,
-                                          onPressed: () async {
-                                            final currentCops = participants.where((p) => p.role == ParticipantRole.cop).length;
-                                            if (currentCops != game.rule.copsCount) {
-                                              HudDialog.show(
-                                                context: context,
-                                                title: '인원 설정 불일치',
-                                                titleColor: Colors.orangeAccent,
-                                                contentText: '설정된 경찰(${game.rule.copsCount}명)과 현재 배정된 인원($currentCops명)이 다릅니다.\n작전 조율이 필요합니다.',
-                                                actions: [
-                                                  SciFiButton(
-                                                    text: '확인',
-                                                    height: 45,
-                                                    fontSize: 14,
-                                                    onPressed: () => Navigator.pop(context),
-                                                  ),
-                                                ],
-                                              );
-                                              return;
-                                            }
-
-                                            try {
-                                              await ref.read(gameRepositoryProvider).startGame(game.id);
-                                            } catch (e) {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(
-                                                    backgroundColor: Colors.redAccent,
-                                                    content: HudText('미션 개시 실패: $e'),
-                                                  ),
-                                                );
-                                              }
-                                            }
-                                          },
-                                        ),
-                                        const SizedBox(height: 12),
-                                        GestureDetector(
-                                          onTap: () => _registerNfcKey(game),
-                                          child: Container(
-                                            width: double.infinity,
-                                            height: 50,
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.circular(16),
-                                              border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
-                                              color: Colors.cyanAccent.withValues(alpha: 0.05),
-                                            ),
-                                            alignment: Alignment.center,
-                                            child: const Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Icon(Icons.nfc_rounded, color: Colors.cyanAccent, size: 20),
-                                                SizedBox(width: 8),
-                                                HudText('보안 열쇠(NFC) 등록', color: Colors.cyanAccent),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ] else ...[
-                                        GlassContainer(
-                                          padding: const EdgeInsets.symmetric(vertical: 16),
-                                          child: const Center(
-                                            child: HudText(
-                                              '작전 개시 대기 중...',
-                                              color: Colors.cyanAccent,
-                                              letterSpacing: 2,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                actions: [
+                  IconButton(
+                    onPressed: () => _shareGame(game),
+                    icon: const Icon(Icons.share_rounded, color: Colors.cyanAccent, size: 20),
                   ),
-                );
-              },
-            ),
+                ],
+              );
+            }
+          });
+
+          return Stack(
+            children: [
+              SafeArea(
+                child: Column(
+                  children: [
+                    const SizedBox(height: kToolbarHeight),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: LobbyGameCodeCard(game: game),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: HudSectionHeader(title: '참여 목록'),
+                    ),
+                    Expanded(
+                      child: StreamBuilder<List<ParticipantModel>>(
+                        stream: participantsAsync,
+                        builder: (context, partSnapshot) {
+                          final participants = partSnapshot.data ?? [];
+                          final currentUser = ref.watch(userProvider).value;
+
+                          return ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: participants.length,
+                            itemBuilder: (context, index) {
+                              final p = participants[index];
+                              final isCurrentUser = p.uid == currentUser?.uid;
+                              final isHost = p.uid == game.hostUid;
+                              final isRoomHost = game.hostUid == currentUser?.uid;
+
+                              return LobbyParticipantTile(
+                                participant: p,
+                                isCurrentUser: isCurrentUser,
+                                isHost: isHost,
+                                isRoomHost: isRoomHost,
+                                onTap: isRoomHost
+                                    ? () {
+                                        if (isCurrentUser) {
+                                          _showRoleChangeBottomSheet(context, game, p);
+                                        } else {
+                                          _showParticipantActionBottomSheet(context, game, p);
+                                        }
+                                      }
+                                    : null,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    StreamBuilder<List<ParticipantModel>>(
+                      stream: participantsAsync,
+                      builder: (context, partSnapshot) {
+                        final participants = partSnapshot.data ?? [];
+                        final currentUser = ref.watch(userProvider).value;
+                        final isHost = game.hostUid == currentUser?.uid;
+
+                        return Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            children: [
+                              if (isHost) ...[
+                                SciFiButton(
+                                  text: '미션 개시',
+                                  height: 54,
+                                  fontSize: 18,
+                                  onPressed: () async {
+                                    final currentCops = participants.where((p) => p.role == ParticipantRole.cop).length;
+                                    if (currentCops != game.rule.copsCount) {
+                                      HudDialog.show(
+                                        context: context,
+                                        title: '인원 설정 불일치',
+                                        titleColor: Colors.orangeAccent,
+                                        contentText: '설정된 경찰(${game.rule.copsCount}명)과 현재 배정된 인원($currentCops명)이 다릅니다.\n작전 조율이 필요합니다.',
+                                          actions: [
+                                            SciFiButton(
+                                              text: '확인',
+                                              height: 45,
+                                              fontSize: 14,
+                                              onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+                                            ),
+                                          ],
+                                      );
+                                      return;
+                                    }
+
+                                    try {
+                                      await ref.read(gameRepositoryProvider).startGame(game.id);
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            backgroundColor: Colors.redAccent,
+                                            content: HudText('미션 개시 실패: $e'),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                GestureDetector(
+                                  onTap: () => _registerNfcKey(game),
+                                  child: Container(
+                                    width: double.infinity,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
+                                      color: Colors.cyanAccent.withValues(alpha: 0.05),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.nfc_rounded, color: Colors.cyanAccent, size: 20),
+                                        SizedBox(width: 8),
+                                        HudText('보안 열쇠(NFC) 등록', color: Colors.cyanAccent),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ] else ...[
+                                GlassContainer(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  child: const Center(
+                                    child: HudText(
+                                      '작전 개시 대기 중...',
+                                      color: Colors.cyanAccent,
+                                      letterSpacing: 2,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
           );
         },
       ),
@@ -561,7 +521,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
       contentText: '${p.nicknameSnapshot}님을 강퇴하시겠습니까?',
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
           child: HudText('취소', color: Colors.white.withValues(alpha: 0.6)),
         ),
         SciFiButton(
@@ -569,12 +529,12 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
           height: 45,
           fontSize: 14,
           onPressed: () async {
-            final navigator = Navigator.of(context);
+            final navigator = Navigator.of(context, rootNavigator: true);
             await ref.read(gameRepositoryProvider).kickParticipant(
               gameId: game.id,
               uid: p.uid,
             );
-            if (mounted) navigator.pop();
+            navigator.pop();
           },
         ),
       ],
