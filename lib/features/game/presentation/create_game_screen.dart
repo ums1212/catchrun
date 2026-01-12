@@ -10,6 +10,7 @@ import 'package:catchrun/core/widgets/hud_section_header.dart';
 import 'package:catchrun/core/widgets/hud_text_field.dart';
 import 'package:catchrun/core/widgets/counter_button.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/cupertino.dart';
 
 class CreateGameScreen extends ConsumerStatefulWidget {
   const CreateGameScreen({super.key});
@@ -72,6 +73,75 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _showNumberPicker({
+    required String title,
+    required int initialValue,
+    required ValueChanged<int> onSelected,
+    required Color color,
+  }) {
+    int selectedValue = initialValue;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.black.withValues(alpha: 0.9),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        height: 300,
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  HudText(title, color: color, fontSize: 18),
+                  TextButton(
+                    onPressed: () {
+                      onSelected(selectedValue);
+                      Navigator.pop(context);
+                    },
+                    child: const HudText('확인', color: Colors.cyanAccent),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: CupertinoTheme(
+                data: const CupertinoThemeData(
+                  textTheme: CupertinoTextThemeData(
+                    pickerTextStyle: TextStyle(color: Colors.white, fontSize: 24),
+                  ),
+                ),
+                child: CupertinoPicker(
+                  itemExtent: 40,
+                  scrollController: FixedExtentScrollController(
+                    initialItem: initialValue - 1,
+                  ),
+                  onSelectedItemChanged: (index) {
+                    selectedValue = index + 1;
+                  },
+                  children: List.generate(
+                    99,
+                    (index) => Center(
+                      child: HudText(
+                        '${index + 1}',
+                        color: Colors.white,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -194,6 +264,12 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                                     onDecrement: _copsCount > 1 
                                         ? () => setState(() => _copsCount--) 
                                         : null,
+                                    onCountPressed: () => _showNumberPicker(
+                                      title: '경찰 인원 선택',
+                                      initialValue: _copsCount,
+                                      color: Colors.blueAccent,
+                                      onSelected: (val) => setState(() => _copsCount = val),
+                                    ),
                                   ),
                                 ),
                                 Container(
@@ -210,6 +286,12 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                                     onDecrement: _robbersCount > 1 
                                         ? () => setState(() => _robbersCount--) 
                                         : null,
+                                    onCountPressed: () => _showNumberPicker(
+                                      title: '도둑 인원 선택',
+                                      initialValue: _robbersCount,
+                                      color: Colors.redAccent,
+                                      onSelected: (val) => setState(() => _robbersCount = val),
+                                    ),
                                   ),
                                 ),
                               ],

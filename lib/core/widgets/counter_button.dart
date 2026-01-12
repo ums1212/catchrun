@@ -45,6 +45,7 @@ class ParticipantCounter extends StatelessWidget {
   final Color color;
   final VoidCallback onIncrement;
   final VoidCallback? onDecrement;
+  final VoidCallback? onCountPressed;
 
   const ParticipantCounter({
     super.key,
@@ -53,6 +54,7 @@ class ParticipantCounter extends StatelessWidget {
     required this.color,
     required this.onIncrement,
     this.onDecrement,
+    this.onCountPressed,
   });
 
   @override
@@ -75,12 +77,17 @@ class ParticipantCounter extends StatelessWidget {
               onPressed: onDecrement,
               color: color,
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: HudText(
-                '$count',
-                fontSize: 24,
-                color: color,
+            Expanded(
+              child: GestureDetector(
+                onTap: onCountPressed,
+                behavior: HitTestBehavior.opaque,
+                child: Center(
+                  child: HudText(
+                    '$count',
+                    fontSize: 24,
+                    color: color,
+                  ),
+                ),
               ),
             ),
             CounterButton(

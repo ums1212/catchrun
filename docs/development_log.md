@@ -13,6 +13,30 @@
 
 ---
 
+## 2026-01-12 (월)
+
+### 🚀 UX 개선: 게임 생성 화면 인원 선택 방식 고도화 (Create Game Spinner & Touch Area Expansion)
+
+#### ✅ 주요 작업 및 성과
+- **인원 선택용 스피너(CupertinoPicker) 도입**
+    - `CreateGameScreen`: 경찰 및 도둑 인원 숫자를 클릭하면 하단 바텀 시트에 iOS 스타일의 `CupertinoPicker`가 나타나 1~99 사이의 숫자를 직관적으로 선택할 수 있도록 개선
+- **위젯 확장성 강화**
+    - `ParticipantCounter`: 숫자를 클릭할 수 있는 `onCountPressed` 콜백 필드 추가 및 `GestureDetector` 구현
+- **터치 영역 및 UX 최적화**
+    - 모바일 환경의 조작 편의성을 위해 숫자 양옆의 빈 공간(버튼 이전까지)을 모두 터치 영역으로 확장 (`Expanded` 및 `HitTestBehavior.opaque` 활용)
+    - 기존의 +, - 버튼 방식과 스피너 선택 방식을 병행 제공하여 사용자 선택폭 확대
+
+#### 📝 비고 / 특이사항
+- **조작성 향상**: 작은 숫자를 직접 터치하기 어려운 환경을 고려하여 터치 영역을 최대화함으로써 오동작 줄이고 사용성 개선
+- **디자인 일관성**: HUD 테마에 어울리는 어두운 배경의 바텀 시트와 민트색 '확인' 버튼을 사용하여 시디컬 미학 유지
+
+#### 🔗 관련 문서
+- 수정 파일:
+    - `lib/core/widgets/counter_button.dart` - `ParticipantCounter` 터치 영역 확장 및 콜백 추가
+    - `lib/features/game/presentation/create_game_screen.dart` - `CupertinoPicker` 기반 선택 로직 구현
+
+---
+
 ## 2026-01-11 (일)
 
 ### 🧹 코드 품질 개선: 위젯 분리 및 HUD 공통화 (Widget Separation & HUD Standardization)
