@@ -1,8 +1,8 @@
+import 'dart:math';
 import 'package:catchrun/core/user/nickname_generator.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 import 'package:catchrun/core/widgets/hud_text.dart';
 import 'package:catchrun/core/widgets/hud_section_header.dart';
 import 'package:catchrun/core/widgets/scifi_button.dart';
@@ -26,7 +26,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   void initState() {
     super.initState();
     _nicknameController = TextEditingController(text: NicknameGenerator.generate());
-    _avatarSeed = const Uuid().v4();
+    _avatarSeed = '1'; // Default initial avatar
   }
 
   @override
@@ -43,7 +43,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   void _regenerateAvatar() {
     setState(() {
-      _avatarSeed = const Uuid().v4();
+      final oldSeed = int.tryParse(_avatarSeed) ?? 1;
+      int newSeed;
+      do {
+        newSeed = Random().nextInt(4) + 1;
+      } while (newSeed == oldSeed);
+      _avatarSeed = newSeed.toString();
     });
   }
 

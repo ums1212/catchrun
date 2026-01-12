@@ -55,7 +55,15 @@ class HomeProfileCard extends StatelessWidget {
                     ),
                   ),
                   alignment: Alignment.center,
-                  child: const Text('👤', style: TextStyle(fontSize: 40)),
+                  child: Image.asset(
+                    'assets/image/profile${avatarSeed ?? '1'}.png',
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Text('👤', style: TextStyle(fontSize: 40));
+                    },
+                  ),
                 ),
               ),
             ),

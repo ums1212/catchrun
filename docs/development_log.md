@@ -15,6 +15,29 @@
 
 ## 2026-01-12 (월)
 
+### 🚀 UX 개선: 프로필 아바타 랜덤 생성 및 시각적 고도화 (Avatar Randomization & Visual Polish)
+
+#### ✅ 주요 작업 및 성과
+- **아바타 랜덤 생성 시스템 구축**
+    - `OnboardingScreen`: 4종의 캐릭터 이미지(`profile1~4.png`) 중 하나를 무작위로 선택하는 로직 구현
+    - `dart:math`의 `Random` 클래스를 활용하여 버튼 클릭 시 현재와 다른 이미지가 선택되도록 정밀도 향상
+    - 초기 진입 시 항상 `profile1.png`가 표시되도록 요구사항 반영
+- **아바타 시각적 완성도 향상**
+    - `GlassAvatar`, `HomeProfileCard`: 글래스모피즘 원형 프레임 내에 아바타가 꽉 차게 표시되도록 `BoxFit.cover` 적용
+    - 이미지 로딩 오류 발생 시 펄백(Fallback) 아이콘(👤)을 표시하여 앱의 안정성 및 시인성 확보
+- **정적 분석 및 코드 건강도 개선**
+    - `flutter analyze` 수행 후 발견된 미사용 임포트(`uuid.dart`) 및 중복 명명된 인자(`alignment`) 제거
+    - `UserModel` 내 기존 `avatarSeed` 필드를 적극 활용하여 설정값이 유실되지 않도록 연동
+
+#### 📝 비고 / 특이사항
+- **디자인 일관성**: 온보딩 단계에서 선택한 아바타가 홈 화면의 프로필 카드에 즉시 반영되어 개인화된 사용자 경험(UX) 제공
+- **안정성**: `Image.asset`의 `errorBuilder`를 사용하여 에셋 누락 상황에서도 사용자 인터페이스가 무너지지 않도록 설계
+
+#### 🔗 관련 문서
+- [walkthrough.md](C:\Users\voll1\.gemini\antigravity\brain\e3b6e15b-0b73-42eb-bc88-26eb34bf2cbc\walkthrough.md)
+
+---
+
 ### 🚀 UX 개선: 게임 생성 화면 인원 선택 방식 고도화 (Create Game Spinner & Touch Area Expansion)
 
 #### ✅ 주요 작업 및 성과
