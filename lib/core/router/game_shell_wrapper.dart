@@ -44,10 +44,41 @@ class GameShellWrapper extends ConsumerWidget {
           : null,
       body: Stack(
         children: [
-          // PlayScreen과 동일한 어두운 배경 유지 (일관성)
+          // 1. Stable Background Image
           Positioned.fill(
-            child: Container(color: Colors.black),
+            child: OrientationBuilder(
+              builder: (context, orientation) {
+                final backgroundImage = orientation == Orientation.portrait
+                    ? 'assets/image/profile_setting_portrait.png'
+                    : 'assets/image/profile_setting_landscape.png';
+                
+                return Image.asset(
+                  backgroundImage,
+                  key: ValueKey(backgroundImage),
+                  fit: BoxFit.cover,
+                );
+              },
+            ),
           ),
+          // 2. Persistent Dark Overlay & Gradient
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.8),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.6),
+                    Colors.black.withValues(alpha: 0.9),
+                  ],
+                  stops: const [0.0, 0.5, 1.0],
+                ),
+              ),
+            ),
+          ),
+          // 3. Content
           child,
         ],
       ),

@@ -47,7 +47,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
   void _updateAppBar({required bool isCop}) {
     final themeColor = isCop ? Colors.blueAccent : Colors.redAccent;
     ref.read(appBarProvider.notifier).state = AppBarConfig(
-      title: isCop ? 'MISSION: COP' : 'MISSION: RUN',
+      title: isCop ? 'MISSION: CATCH' : 'MISSION: RUN',
       centerTitle: true,
       titleColor: themeColor,
       actions: [

@@ -53,7 +53,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
 
   void _updateAppBar() {
     ref.read(appBarProvider.notifier).state = AppBarConfig(
-      title: '전투 대기실',
+      title: '대기실',
       centerTitle: true,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new_rounded),
@@ -64,7 +64,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
 
   void _updateAppBarWithGame(GameModel game) {
     ref.read(appBarProvider.notifier).state = AppBarConfig(
-      title: '전투 대기실',
+      title: '대기실',
       centerTitle: true,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new_rounded),
