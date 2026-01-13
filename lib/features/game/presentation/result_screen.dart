@@ -20,43 +20,52 @@ class ResultScreen extends ConsumerWidget {
     final gameAsync = ref.watch(watchGameProvider(gameId));
     final participantsAsync = ref.watch(watchParticipantsProvider(gameId));
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const HudText(
-          '작전 결과',
-          fontSize: 20,
-          letterSpacing: 2,
-          color: Colors.cyanAccent,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        context.go('/home');
+      },
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          title: const HudText(
+            '작전 결과',
+            fontSize: 20,
+            letterSpacing: 2,
+            color: Colors.cyanAccent,
+          ),
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Colors.cyanAccent),
+          // 뒤로가기 버튼이 자동으로 생기지 않도록 설정 (이미 팝스코프로 제어 중이므로)
+          automaticallyImplyLeading: false,
         ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.cyanAccent),
-      ),
-      body: gameAsync.when(
-        data: (game) {
-          if (game == null) {
-            return const Center(
-              child: HudText('게임을 찾을 수 없습니다.', color: Colors.white70),
+        body: gameAsync.when(
+          data: (game) {
+            if (game == null) {
+              return const Center(
+                child: HudText('게임을 찾을 수 없습니다.', color: Colors.white70),
+              );
+            }
+            return participantsAsync.when(
+              data: (participants) => _buildResultContent(context, game, participants),
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: Colors.cyanAccent),
+              ),
+              error: (err, stack) => Center(
+                child: HudText('오류: $err', color: Colors.redAccent),
+              ),
             );
-          }
-          return participantsAsync.when(
-            data: (participants) => _buildResultContent(context, game, participants),
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: Colors.cyanAccent),
-            ),
-            error: (err, stack) => Center(
-              child: HudText('오류: $err', color: Colors.redAccent),
-            ),
-          );
-        },
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: Colors.cyanAccent),
-        ),
-        error: (err, stack) => Center(
-          child: HudText('오류: $err', color: Colors.redAccent),
+          },
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: Colors.cyanAccent),
+          ),
+          error: (err, stack) => Center(
+            child: HudText('오류: $err', color: Colors.redAccent),
+          ),
         ),
       ),
     );

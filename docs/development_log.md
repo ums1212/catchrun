@@ -15,6 +15,24 @@
 
 ## 2026-01-13 (월)
 
+### 🚀 UX 개선: 결과 화면 뒤로가기 동작 수정 (Result Screen Back Navigation Fix)
+
+#### ✅ 주요 작업 및 성과
+- **뒤로가기 가로채기 및 리다이렉션 구현**
+    - `ResultScreen`: `PopScope`를 도입하여 시스템 뒤로가기 버튼 클릭 시 앱이 종료되는 대신 홈 화면(`/home`)으로 이동하도록 수정
+    - **네비게이션 제어**: `canPop: false` 설정 및 `onPopInvokedWithResult`에서 `context.go('/home')` 호출
+- **UI 정리**
+    - `AppBar`: `automaticallyImplyLeading: false`를 설정하여 불필요한 기본 뒤로가기 아이콘 제거
+
+#### 📝 비고 / 특이사항
+- **UX 개선**: 게임 종료 후 결과 화면이 스택의 최상위일 때 뒤로가기로 우발적인 앱 종료가 발생하는 문제를 방지하고 자연스럽게 홈으로 유도함
+
+#### 🔗 관련 파일
+- `lib/features/game/presentation/result_screen.dart` - `PopScope` 적용 및 앱바 수정
+
+---
+
+
 ### � 버그 수정: 게임 시작 시 타이머 동기화 문제 해결 (Game Timer Synchronization Fix)
 
 #### ✅ 주요 작업 및 성과
