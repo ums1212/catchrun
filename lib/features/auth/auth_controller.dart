@@ -88,4 +88,20 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
     });
   }
 
+  Future<void> cancelRegistration() async {
+    final currentUser = _authRepository.currentUser;
+    if (currentUser == null) return;
+
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      if (currentUser.isAnonymous) {
+        // 익명 계정인 경우 데이터와 계정 모두 삭제
+        await _userRepository.deleteAnonymousUser(currentUser.uid);
+        await _authRepository.deleteAnonymousUser();
+      } else {
+        // 일반 계정인 경우 로그아웃만 수행
+        await _authRepository.signOut();
+      }
+    });
+  }
 }

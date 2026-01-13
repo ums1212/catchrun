@@ -42,4 +42,9 @@ class UserRepository {
       return null;
     });
   }
+
+  /// 익명 계정 데이터를 삭제하는 용도로 사용
+  Future<void> deleteAnonymousUser(String uid) async {
+    await _usersConfig.doc(uid).delete();
+  }
 }

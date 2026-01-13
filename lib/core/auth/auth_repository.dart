@@ -49,4 +49,12 @@ class AuthRepository {
     await _googleSignIn.signOut();
     await _auth.signOut();
   }
+
+  /// 익명 계정을 사용하는 경우에만 삭제하는 용도로 사용
+  Future<void> deleteAnonymousUser() async {
+    final user = _auth.currentUser;
+    if (user != null && user.isAnonymous) {
+      await user.delete();
+    }
+  }
 }

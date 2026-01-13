@@ -15,6 +15,33 @@
 
 ## 2026-01-13 (월)
 
+### 🚀 UX 개선: 프로필 설정 취소 시 익명 계정 자동 삭제 및 로그아웃 구현 (Anonymous Account Deletion on Cancel)
+
+#### ✅ 주요 작업 및 성과
+- **보안 및 데이터 정화: 익명 계정 삭제 프로세스 구축**
+    - 프로필 설정 단계에서 사용자가 이탈할 경우, 불필요한 익명 계정과 Firestore 데이터가 남지 않도록 자동 삭제 로직 구현
+    - `AuthRepository.deleteAnonymousUser()`: Firebase Auth 익명 계정 영구 삭제 기능 추가
+    - `UserRepository.deleteAnonymousUser()`: Firestore `users` 컬렉션의 임시 데이터 삭제 기능 추가
+- **회원가입 취소 통합 제어 로직 (`AuthController.cancelRegistration`)**
+    - 사용자가 익명 로그인 상태인지 확인 후, 익명일 경우 데이터와 계정 모두 삭제 처리
+    - 일반 로그인 상태인 경우 안전하게 로그아웃만 수행하여 사용자 경험(UX) 보호
+- **이탈 방지 확인 다이얼로그 도입**
+    - `OnboardingScreen`: `PopScope`를 적용하여 시스템 뒤로가기 버튼 인터셉트
+    - 프로필 설정을 취소하고 로그인 화면으로 돌아갈지 묻는 확인 다이얼로그 노출
+    - "네" 선택 시 즉시 계정 정화 작업 후 로그인 화면으로 자동 리다이렉션 (라우터 연동)
+
+#### 📝 비고 / 특이사항
+- **개인정보 보호**: 프로필이 완성되지 않은 유령 계정이 DB에 쌓이는 것을 방지하여 데이터 품질 및 개인정보 관리 효율성 향상
+- **라우팅 자동화**: 별도의 `context.go` 호출 없이 `authStateChangesProvider`의 상태 변화를 감지하여 `app_router.dart`의 리다이렉션 로직이 자연스럽게 동작하도록 설계
+
+#### 🔗 관련 파일
+- `lib/core/auth/auth_repository.dart` - 익명 계정 삭제 메서드 추가
+- `lib/core/user/user_repository.dart` - 익명 데이터 삭제 메서드 추가
+- `lib/features/auth/auth_controller.dart` - `cancelRegistration` 통합 로직 구현
+- `lib/features/onboarding/onboarding_screen.dart` - `PopScope` 및 확인 다이얼로그 적용
+
+---
+
 ### 🚀 UX 개선: 홈 및 로그인 화면 뒤로가기 종료 확인 다이얼로그 구현 (Back Navigation Exit Dialog)
 
 #### ✅ 주요 작업 및 성과
