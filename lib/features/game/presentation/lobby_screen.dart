@@ -43,6 +43,40 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
       onDetach: _leaveGameSilently,
     );
     _setupKickDetection();
+    // AppBar 초기 설정
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _updateAppBar();
+      }
+    });
+  }
+
+  void _updateAppBar() {
+    ref.read(appBarProvider.notifier).state = AppBarConfig(
+      title: '전투 대기실',
+      centerTitle: true,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new_rounded),
+        onPressed: () => _handleExit(),
+      ),
+    );
+  }
+
+  void _updateAppBarWithGame(GameModel game) {
+    ref.read(appBarProvider.notifier).state = AppBarConfig(
+      title: '전투 대기실',
+      centerTitle: true,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new_rounded),
+        onPressed: () => _handleExit(),
+      ),
+      actions: [
+        IconButton(
+          onPressed: () => _shareGame(game),
+          icon: const Icon(Icons.share_rounded, color: Colors.cyanAccent, size: 20),
+        ),
+      ],
+    );
   }
 
   void _setupKickDetection() {
@@ -289,24 +323,9 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             return const Center(child: HudText('본부로 복귀 중...', fontSize: 18));
           }
 
-          // AppBar 설정 업데이트
+          // AppBar에 share 액션 추가 (game 로드 후)
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              ref.read(appBarProvider.notifier).state = AppBarConfig(
-                title: '전투 대기실',
-                centerTitle: true,
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                  onPressed: () => _handleExit(),
-                ),
-                actions: [
-                  IconButton(
-                    onPressed: () => _shareGame(game),
-                    icon: const Icon(Icons.share_rounded, color: Colors.cyanAccent, size: 20),
-                  ),
-                ],
-              );
-            }
+            if (mounted) _updateAppBarWithGame(game);
           });
 
           return Stack(

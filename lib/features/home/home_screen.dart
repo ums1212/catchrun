@@ -1,4 +1,5 @@
 import 'package:catchrun/core/providers/app_bar_provider.dart';
+import 'package:catchrun/core/router/app_router.dart';
 import 'package:catchrun/core/widgets/hud_dialog.dart';
 import 'package:catchrun/core/widgets/hud_text.dart';
 import 'package:catchrun/core/widgets/scifi_button.dart';
@@ -16,15 +17,58 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
+  RouteObserver<ModalRoute<void>>? _routeObserver;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.isKicked && mounted) {
+      if (!mounted) return;
+      _updateAppBar();
+      if (widget.isKicked) {
         _showKickedDialog(context);
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // RouteObserver 구독
+    _routeObserver?.unsubscribe(this);
+    _routeObserver = ref.read(mainShellRouteObserverProvider);
+    _routeObserver?.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void dispose() {
+    _routeObserver?.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // 빌드 완료 후 앱바 업데이트 (Riverpod provider 수정은 빌드 중 불가)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updateAppBar();
+    });
+  }
+
+  void _updateAppBar() {
+    ref.read(appBarProvider.notifier).state = AppBarConfig(
+      title: 'CATCH RUN',
+      centerTitle: true,
+      actions: [
+        IconButton(
+          onPressed: () => _showLogoutDialog(context, ref),
+          icon: Icon(
+            Icons.logout_rounded,
+            color: Colors.cyanAccent.withValues(alpha: 0.7),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -59,25 +103,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final userAsync = ref.watch(userProvider);
-    
-    // AppBar 설정 업데이트
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(appBarProvider.notifier).state = AppBarConfig(
-          title: 'CATCH RUN',
-          centerTitle: true,
-          actions: [
-            IconButton(
-              onPressed: () => _showLogoutDialog(context, ref),
-              icon: Icon(
-                Icons.logout_rounded,
-                color: Colors.cyanAccent.withValues(alpha: 0.7),
-              ),
-            ),
-          ],
-        );
-      }
-    });
 
     return userAsync.when(
       data: (user) => SafeArea(
@@ -87,8 +112,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: kToolbarHeight), // AppBar 영역 확보
-                const SizedBox(height: 20),
                 // Profile Area
                 HomeProfileCard(
                   nickname: user?.nickname ?? '사용자',

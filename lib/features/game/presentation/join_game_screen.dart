@@ -1,3 +1,4 @@
+import 'package:catchrun/core/router/app_router.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +22,7 @@ class JoinGameScreen extends ConsumerStatefulWidget {
   ConsumerState<JoinGameScreen> createState() => _JoinGameScreenState();
 }
 
-class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTickerProviderStateMixin {
+class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTickerProviderStateMixin, RouteAware {
   final _formKey = GlobalKey<FormState>();
   final _gameCodeController = TextEditingController();
   final _inviteCodeController = TextEditingController();
@@ -29,6 +30,7 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
   bool _isLoading = false;
   bool _isScanning = false;
   bool _isPermissionDenied = false;
+  RouteObserver<ModalRoute<void>>? _routeObserver;
 
   @override
   void initState() {
@@ -43,14 +45,40 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
         });
       }
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updateAppBar();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _routeObserver?.unsubscribe(this);
+    _routeObserver = ref.read(mainShellRouteObserverProvider);
+    _routeObserver?.subscribe(this, ModalRoute.of(context)!);
   }
 
   @override
   void dispose() {
+    _routeObserver?.unsubscribe(this);
     _gameCodeController.dispose();
     _inviteCodeController.dispose();
     _tabController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updateAppBar();
+    });
+  }
+
+  void _updateAppBar() {
+    ref.read(appBarProvider.notifier).state = const AppBarConfig(
+      title: '게임 참가',
+      centerTitle: true,
+    );
   }
 
   Future<void> _joinGame() async {
@@ -189,18 +217,8 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    // AppBar 설정 업데이트
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(appBarProvider.notifier).state = const AppBarConfig(
-          title: '게임 참가',
-          centerTitle: true,
-        );
-      }
-    });
+    final topPadding = MediaQuery.of(context).padding.top; // + kToolbarHeight;
 
-    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight;
-    
     return Column(
       children: [
         // AppBar 구역 확보를 위한 여백

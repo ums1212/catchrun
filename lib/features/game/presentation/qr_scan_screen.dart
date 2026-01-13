@@ -30,6 +30,26 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    // AppBar 초기 설정
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _updateAppBar();
+      }
+    });
+  }
+
+  void _updateAppBar() {
+    final themeColor = widget.isCop ? Colors.blueAccent : Colors.redAccent;
+    ref.read(appBarProvider.notifier).state = AppBarConfig(
+      title: widget.isCop ? '스캔: 도둑 체포' : '스캔: 아군 구출',
+      centerTitle: true,
+      titleColor: themeColor,
+    );
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();
@@ -133,17 +153,6 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
   @override
   Widget build(BuildContext context) {
     final themeColor = widget.isCop ? Colors.blueAccent : Colors.redAccent;
-
-    // AppBar 설정 업데이트
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(appBarProvider.notifier).state = AppBarConfig(
-          title: widget.isCop ? '스캔: 도둑 체포' : '스캔: 아군 구출',
-          centerTitle: true,
-          titleColor: themeColor,
-        );
-      }
-    });
 
     return Stack(
       children: [

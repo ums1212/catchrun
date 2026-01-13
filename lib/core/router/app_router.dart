@@ -21,7 +21,20 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 final _gameShellNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Main Shell용 RouteObserver (HomeScreen, CreateGameScreen, JoinGameScreen)
+final mainShellRouteObserverProvider = Provider<RouteObserver<ModalRoute<void>>>((ref) {
+  return RouteObserver<ModalRoute<void>>();
+});
+
+/// Game Shell용 RouteObserver (PlayScreen, PrisonScreen, QrScanScreen)
+final gameShellRouteObserverProvider = Provider<RouteObserver<ModalRoute<void>>>((ref) {
+  return RouteObserver<ModalRoute<void>>();
+});
+
 final routerProvider = Provider<GoRouter>((ref) {
+  final mainShellObserver = ref.watch(mainShellRouteObserverProvider);
+  final gameShellObserver = ref.watch(gameShellRouteObserverProvider);
+  
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
@@ -44,6 +57,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // 2. Main Shell (Home, Create, Join, Lobby)
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
+        observers: [mainShellObserver],
         builder: (context, state, child) => MainShellWrapper(child: child),
         routes: [
           GoRoute(
@@ -54,7 +68,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 key: state.pageKey,
                 child: HomeScreen(isKicked: isKicked),
                 transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(opacity: animation, child: child);
+                  return SlideTransition(position: Tween(begin: Offset(1, 0), end: Offset.zero).animate(animation), child: child);
                 },
               );
             },
@@ -65,7 +79,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               key: state.pageKey,
               child: const CreateGameScreen(),
               transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                return FadeTransition(opacity: animation, child: child);
+                return SlideTransition(position: Tween(begin: Offset(1, 0), end: Offset.zero).animate(animation), child: child);
               },
             ),
           ),
@@ -75,7 +89,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               key: state.pageKey,
               child: const JoinGameScreen(),
               transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                return FadeTransition(opacity: animation, child: child);
+                return SlideTransition(position: Tween(begin: Offset(1, 0), end: Offset.zero).animate(animation), child: child);
               },
             ),
           ),
@@ -87,7 +101,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 key: state.pageKey,
                 child: LobbyScreen(gameId: gameId),
                 transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(opacity: animation, child: child);
+                  return SlideTransition(position: Tween(begin: Offset(1, 0), end: Offset.zero).animate(animation), child: child);
                 },
               );
             },
@@ -98,6 +112,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // 3. Game Shell (Play, QrScan, Prison)
       ShellRoute(
         navigatorKey: _gameShellNavigatorKey,
+        observers: [gameShellObserver],
         builder: (context, state, child) => GameShellWrapper(child: child),
         routes: [
           GoRoute(

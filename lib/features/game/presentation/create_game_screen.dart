@@ -1,4 +1,5 @@
 import 'package:catchrun/core/models/game_model.dart';
+import 'package:catchrun/core/router/app_router.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
 import 'package:flutter/material.dart';
@@ -20,18 +21,50 @@ class CreateGameScreen extends ConsumerStatefulWidget {
   ConsumerState<CreateGameScreen> createState() => _CreateGameScreenState();
 }
 
-class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
+class _CreateGameScreenState extends ConsumerState<CreateGameScreen> with RouteAware {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   int _durationMinutes = 10;
   int _copsCount = 2;
   int _robbersCount = 6;
   bool _isLoading = false;
+  RouteObserver<ModalRoute<void>>? _routeObserver;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updateAppBar();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _routeObserver?.unsubscribe(this);
+    _routeObserver = ref.read(mainShellRouteObserverProvider);
+    _routeObserver?.subscribe(this, ModalRoute.of(context)!);
+  }
 
   @override
   void dispose() {
+    _routeObserver?.unsubscribe(this);
     _titleController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updateAppBar();
+    });
+  }
+
+  void _updateAppBar() {
+    ref.read(appBarProvider.notifier).state = const AppBarConfig(
+      title: '게임 만들기',
+      centerTitle: true,
+    );
   }
 
   Future<void> _createGame() async {
@@ -147,16 +180,6 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // AppBar 설정 업데이트
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(appBarProvider.notifier).state = const AppBarConfig(
-          title: '게임 만들기',
-          centerTitle: true,
-        );
-      }
-    });
-
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -165,8 +188,8 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: kToolbarHeight), // AppBar 영역 확보
-              const SizedBox(height: 10),
+              // const SizedBox(height: kToolbarHeight), // AppBar 영역 확보
+              // const SizedBox(height: 10),
               HudSectionHeader(title: '게임 설정'),
               const SizedBox(height: 20),
               // Game Name Input

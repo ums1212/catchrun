@@ -36,6 +36,16 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
     super.initState();
     _initServerTimeOffset();
     _startTimer();
+    // AppBar 초기 설정
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(appBarProvider.notifier).state = const AppBarConfig(
+          title: '구금 상태 (PRISON)',
+          centerTitle: true,
+          titleColor: Colors.redAccent,
+        );
+      }
+    });
   }
 
   @override
@@ -206,16 +216,7 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
               });
             }
 
-            // AppBar 설정 업데이트
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                ref.read(appBarProvider.notifier).state = const AppBarConfig(
-                  title: '구금 상태 (PRISON)',
-                  centerTitle: true,
-                  titleColor: Colors.redAccent,
-                );
-              }
-            });
+
 
             final qrData = 'catchrun:${game.id}:${currentUser?.uid}';
 

@@ -51,6 +51,37 @@
 
 ---
 
+### 🚀 앱바 타이틀 동적 업데이트 시스템 구축 (Dynamic AppBar Title Management)
+
+#### ✅ 주요 작업 및 성과
+- **RouteAware 기반 화면 전환 감지 시스템 구현**
+    - `app_router.dart`: 각 ShellRoute에 별도의 `RouteObserver` 인스턴스 생성
+        - `mainShellRouteObserverProvider`: Main Shell(Home, Create, Join, Lobby) 전용
+        - `gameShellRouteObserverProvider`: Game Shell(Play, Prison, QrScan) 전용
+    - 각 ShellRoute에 `observers` 파라미터로 해당 observer 등록
+- **화면별 RouteAware mixin 적용**
+    - `HomeScreen`, `CreateGameScreen`, `JoinGameScreen`에 `RouteAware` mixin 적용
+    - `didChangeDependencies()`: RouteObserver 구독 설정
+    - `didPopNext()`: 다른 화면에서 돌아올 때 앱바 업데이트
+    - `dispose()`: RouteObserver 구독 해제
+- **Riverpod Provider 빌드 중 수정 오류 해결**
+    - `didPopNext()`에서 직접 provider 수정 시 "Tried to modify a provider while the widget tree was building" 에러 발생
+    - 해결: `WidgetsBinding.instance.addPostFrameCallback()`으로 감싸서 빌드 완료 후 실행되도록 수정
+- **앱바 설정 로직 `initState()`로 이동**
+    - 기존 `build()` 내 `addPostFrameCallback` 호출을 `initState()`로 이동
+    - 화면 최초 생성 시 한 번만 앱바 설정, 복귀 시에는 `didPopNext()`에서 처리
+
+#### 📝 비고 / 특이사항
+- **RouteObserver 중복 등록 에러**: 동일한 `RouteObserver` 인스턴스를 여러 Navigator(root, shell)에 등록할 수 없어 에러 발생. 각 Shell에 별도의 observer 인스턴스를 생성하여 해결.
+- **ShellRoute 내부 push/pop 감지**: root Navigator의 observer는 ShellRoute 내부의 화면 전환을 감지하지 못함. ShellRoute의 `observers` 파라미터에 등록해야 내부 이동 감지 가능.
+- **코드 패턴 정립**: 화면 전환 시 앱바 업데이트를 위한 정석적인 Flutter 패턴(RouteAware + addPostFrameCallback) 적용
+
+#### 🔗 관련 파일
+- `lib/core/router/app_router.dart` - RouteObserver 프로바이더 및 ShellRoute observers 설정
+- `lib/features/home/home_screen.dart` - RouteAware mixin 적용
+- `lib/features/game/presentation/create_game_screen.dart` - RouteAware mixin 적용
+- `lib/features/game/presentation/join_game_screen.dart` - RouteAware mixin 적용
+
 ## 2026-01-12 (월)
 
 ### 🚀 UX 개선: 프로필 아바타 랜덤 생성 및 시각적 고도화 (Avatar Randomization & Visual Polish)

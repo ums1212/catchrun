@@ -36,6 +36,27 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
     super.initState();
     _initServerTimeOffset();
     _startTimer();
+    // AppBar 초기 설정
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _updateAppBar(isCop: false); // 기본값, 이후 참가자 정보로 갱신
+      }
+    });
+  }
+
+  void _updateAppBar({required bool isCop}) {
+    final themeColor = isCop ? Colors.blueAccent : Colors.redAccent;
+    ref.read(appBarProvider.notifier).state = AppBarConfig(
+      title: isCop ? 'MISSION: COP' : 'MISSION: RUN',
+      centerTitle: true,
+      titleColor: themeColor,
+      actions: [
+        IconButton(
+          onPressed: () => _showExitDialog(context),
+          icon: const Icon(Icons.close_rounded, color: Colors.white60),
+        ),
+      ],
+    );
   }
 
   @override
@@ -127,21 +148,9 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
               return const Center(child: CircularProgressIndicator(color: Colors.redAccent));
             }
 
-            // AppBar 설정 업데이트
+            // AppBar 설정 업데이트 (역할에 따라)
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                ref.read(appBarProvider.notifier).state = AppBarConfig(
-                  title: isCop ? 'MISSION: COP' : 'MISSION: RUN',
-                  centerTitle: true,
-                  titleColor: themeColor,
-                  actions: [
-                    IconButton(
-                      onPressed: () => _showExitDialog(context),
-                      icon: const Icon(Icons.close_rounded, color: Colors.white60),
-                    ),
-                  ],
-                );
-              }
+              if (mounted) _updateAppBar(isCop: isCop);
             });
 
             if (game.endsAt != null) {
