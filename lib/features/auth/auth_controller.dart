@@ -62,8 +62,21 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
 
 
   Future<void> signOut() async {
+    final currentUser = _authRepository.currentUser;
+    if (currentUser == null) return;
+
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _authRepository.signOut());
+    state = await AsyncValue.guard(() async {
+      if (currentUser.isAnonymous) {
+        // 익명 계정인 경우 계정 먼저 삭제 (리다이렉션이 /login으로 향하도록)
+        final uid = currentUser.uid;
+        await _authRepository.deleteAnonymousUser();
+        await _userRepository.deleteAnonymousUser(uid);
+      } else {
+        // 일반 계정인 경우 로그아웃만 수행
+        await _authRepository.signOut();
+      }
+    });
   }
 
   Future<void> completeProfile(String nickname, String avatarSeed) async {
@@ -89,19 +102,6 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
   }
 
   Future<void> cancelRegistration() async {
-    final currentUser = _authRepository.currentUser;
-    if (currentUser == null) return;
-
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      if (currentUser.isAnonymous) {
-        // 익명 계정인 경우 데이터와 계정 모두 삭제
-        await _userRepository.deleteAnonymousUser(currentUser.uid);
-        await _authRepository.deleteAnonymousUser();
-      } else {
-        // 일반 계정인 경우 로그아웃만 수행
-        await _authRepository.signOut();
-      }
-    });
+    await signOut();
   }
 }

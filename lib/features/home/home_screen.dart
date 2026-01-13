@@ -150,7 +150,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
     HudDialog.show(
       context: context,
       title: '로그아웃',
-      contentText: '정말 로그아웃 하시겠습니까?',
+      contentText: '정말 로그아웃 하시겠습니까?\n익명 계정인 경우 모든 데이터가 삭제됩니다.',
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
