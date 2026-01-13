@@ -123,9 +123,11 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
         '🔑 초대 코드: ${game.inviteCode}\n\n'
         '앱을 실행하고 코드 입력 또는 QR 스캔으로 참가하세요!';
     
-    await Share.share(
-      message,
-      subject: '${game.title} 게임 초대',
+    await SharePlus.instance.share(
+      ShareParams(
+        text: message,
+        subject: '${game.title} 게임 초대',
+      ),
     );
   }
 
@@ -191,7 +193,6 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
     }
 
     if (!mounted) return;
-
     HudDialog.show(
       context: context,
       barrierDismissible: false,

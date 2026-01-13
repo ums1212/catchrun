@@ -82,7 +82,7 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
   Future<void> _useNfcKey() async {
     final availability = await NfcManager.instance.checkAvailability();
     if (availability != NfcAvailability.enabled) {
-    if (!context.mounted) return;
+    if (!mounted) return;
     HudDialog.show(
         context: context,
         title: 'NFC 비활성',
@@ -111,7 +111,7 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
       return;
     }
 
-    if (!context.mounted) return;
+    if (!mounted) return;
     setState(() => _isScanning = true);
     HudDialog.show(
       context: context,
@@ -195,9 +195,11 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
           return const Center(child: HudText('게임이 종료되었습니다.', fontSize: 18));
         }
 
-        if (game.endsAt != null) {
+        // startedAt + durationSec을 사용해 종료 시간 계산 (서버 시간 기준)
+        if (game.startedAt != null) {
           final estimatedServerTime = DateTime.now().add(_serverTimeOffset);
-          _remainingTime = game.endsAt!.difference(estimatedServerTime);
+          final endsAt = game.startedAt!.add(Duration(seconds: game.durationSec));
+          _remainingTime = endsAt.difference(estimatedServerTime);
           if (_remainingTime.isNegative) _remainingTime = Duration.zero;
         }
 

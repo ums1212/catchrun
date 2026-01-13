@@ -15,7 +15,31 @@
 
 ## 2026-01-13 (월)
 
-### 🛠️ 앱바 통합 및 레이아웃 개선 (Unified AppBar & Layout Refinement)
+### � 버그 수정: 게임 시작 시 타이머 동기화 문제 해결 (Game Timer Synchronization Fix)
+
+#### ✅ 주요 작업 및 성과
+- **문제 원인 분석 및 해결**
+    - **문제 현상**: 게임 시작 시 타이머가 정상 동작하지 않거나 다른 기기와 시간이 맞지 않는 문제 발생
+    - **근본 원인**: `startGame()` 메서드에서 `endsAt`를 **호스트 클라이언트의 로컬 시간** 기준으로 계산하여 저장
+        - 서버 타임스탬프(`startedAt`)와 클라이언트 시간(`endsAt`)이 혼용되어 기기 간 시간 불일치 발생
+- **서버 시간 기반 타이머 계산으로 전환**
+    - `PlayScreen`: `endsAt` 대신 **`startedAt + durationSec`** 을 사용하여 종료 시간 계산
+        - 기존: `game.endsAt!.difference(estimatedServerTime)`
+        - 변경: `game.startedAt!.add(Duration(seconds: game.durationSec)).difference(estimatedServerTime)`
+    - `PrisonScreen`: 동일한 로직 적용으로 감옥 화면에서도 정확한 타이머 표시
+    - `_checkEndConditions()`: 게임 종료 조건 검사 시에도 서버 시간 기반으로 일관성 유지
+
+#### 📝 비고 / 특이사항
+- **기술적 이유**: `startedAt`은 Firestore 서버 타임스탬프(`FieldValue.serverTimestamp()`)로 저장되어 모든 클라이언트에서 동일한 값을 갖지만, `endsAt`는 호스트의 로컬 시간으로 계산되어 불일치 발생
+- **서버 시간 offset**: 기존에 구현되어 있던 `_serverTimeOffset`을 활용하여 정확한 남은 시간 계산
+
+#### 🔗 관련 파일
+- `lib/features/game/presentation/play_screen.dart` - 남은 시간 계산 및 게임 종료 조건 로직 수정
+- `lib/features/game/presentation/prison_screen.dart` - 남은 시간 계산 로직 수정
+
+---
+
+### �🛠️ 앱바 통합 및 레이아웃 개선 (Unified AppBar & Layout Refinement)
 
 #### ✅ 주요 작업 및 성과
 - **통합 앱바 시스템 구축**

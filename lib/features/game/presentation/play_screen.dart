@@ -94,8 +94,13 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
       if (game == null || game.status != GameStatus.playing) return;
       final currentUser = ref.read(userProvider).value;
       if (game.hostUid != currentUser?.uid) return;
-      if (game.endsAt != null && DateTime.now().isAfter(game.endsAt!)) {
-        ref.read(gameRepositoryProvider).finishGame(game.id);
+      // startedAt + durationSec을 사용해 종료 시간 계산 (서버 시간 기준)
+      if (game.startedAt != null) {
+        final estimatedServerTime = DateTime.now().add(_serverTimeOffset);
+        final endsAt = game.startedAt!.add(Duration(seconds: game.durationSec));
+        if (estimatedServerTime.isAfter(endsAt)) {
+          ref.read(gameRepositoryProvider).finishGame(game.id);
+        }
       }
     });
     setState(() {});
@@ -153,9 +158,11 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
               if (mounted) _updateAppBar(isCop: isCop);
             });
 
-            if (game.endsAt != null) {
+            // startedAt + durationSec을 사용해 종료 시간 계산 (서버 시간 기준)
+            if (game.startedAt != null) {
               final estimatedServerTime = DateTime.now().add(_serverTimeOffset);
-              _remainingTime = game.endsAt!.difference(estimatedServerTime);
+              final endsAt = game.startedAt!.add(Duration(seconds: game.durationSec));
+              _remainingTime = endsAt.difference(estimatedServerTime);
               if (_remainingTime.isNegative) _remainingTime = Duration.zero;
             }
 
