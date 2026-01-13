@@ -15,6 +15,30 @@
 
 ## 2026-01-13 (월)
 
+### 🚀 UX 개선: 홈 및 로그인 화면 뒤로가기 종료 확인 다이얼로그 구현 (Back Navigation Exit Dialog)
+
+#### ✅ 주요 작업 및 성과
+- **앱 종료 확인 프로세스 도입**
+    - 홈 화면 및 로그인 화면에서 실수로 뒤로가기를 눌러 앱이 즉시 종료되는 문제를 방지하기 위해 `PopScope`를 활용한 확인 다이얼로그 구현
+    - `HudDialog.show()`를 사용하여 "캐치런을 종료하시겠습니까?" 메시지 표시 및 '취소', '종료' 버튼 제공
+- **ShellRoute 내 PopScope 동작 버그 수정**
+    - **문제**: `ShellRoute` 내부 화면인 `HomeScreen`에 직접 `PopScope`를 적용했을 때, 상위 Navigator에 의해 이벤트가 무시되어 다이얼로그 없이 앱이 종료되는 현상 발견
+    - **해결**: 공통 래퍼인 `MainShellWrapper`에 `PopScope`를 이동 적용하고, `GoRouterState`를 통해 현재 경로가 `/home`인 경우에만 종료 확인 로직이 동작하도록 최적화
+- **정적 분석 및 코드 건강도 개선**
+    - `HomeScreen`에서 중복된 `PopScope` 및 헬퍼 메서드 제거
+    - 사용하지 않는 `flutter/services.dart` 임포트 정리 및 `flutter analyze` 통과
+
+#### 📝 비고 / 특이사항
+- **일관된 UX**: 로그인 화면(독립 경로)과 홈 화면(쉘 경로) 모두에서 동일한 스타일의 종료 확인 창을 제공하여 사용자 경험의 일관성 확보
+- **라우팅 최적화**: 쉘 레벨에서 경로를 판별하여 이벤트를 제어함으로써 향후 다른 쉘 내부 화면으로의 확장이 용이한 구조 확보
+
+#### 🔗 관련 파일
+- `lib/core/router/main_shell_wrapper.dart` - 공통 `PopScope` 적용 및 종료 로직 통합
+- `lib/features/home/home_screen.dart` - 중복 로직 제거 및 코드 정리
+- `lib/features/auth/login_screen.dart` - 독립적인 `PopScope` 적용
+
+---
+
 ### 🚀 UX 개선: 결과 화면 뒤로가기 동작 수정 (Result Screen Back Navigation Fix)
 
 #### ✅ 주요 작업 및 성과
