@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:nfc_manager/ndef_record.dart';
 import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 import 'package:app_settings/app_settings.dart';
 import 'package:catchrun/core/models/game_model.dart';
@@ -156,8 +158,23 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
         final ndef = Ndef.from(tag);
         if (ndef == null || ndef.cachedMessage == null) throw Exception('유효한 열쇠 데이터가 없습니다.');
         final record = ndef.cachedMessage!.records.first;
-        final languageCodeLength = record.payload[0];
-        final scannedId = String.fromCharCodes(record.payload.sublist(1 + languageCodeLength));
+        String scannedId = '';
+        
+        if (record.typeNameFormat == TypeNameFormat.wellKnown && 
+            utf8.decode(record.type) == 'U') {
+          // URI Record 처리
+          final payload = record.payload;
+          final prefixByte = payload[0];
+          final prefix = _getUriPrefix(prefixByte);
+          final uriString = prefix + utf8.decode(payload.sublist(1));
+          final uri = Uri.parse(uriString);
+          scannedId = uri.queryParameters['nfcKeyId'] ?? '';
+        } else {
+          // 기존 텍스트 레코드 처리 폴백
+          final languageCodeLength = record.payload[0];
+          scannedId = String.fromCharCodes(record.payload.sublist(1 + languageCodeLength));
+        }
+
         final currentUser = ref.read(userProvider).value;
         if (currentUser == null) throw Exception('User authentication lost.');
         await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).usePrisonKey(gameId: widget.gameId, uid: currentUser.uid, scannedId: scannedId));
@@ -288,5 +305,15 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
         );
       },
     );
+  }
+
+  String _getUriPrefix(int prefixByte) {
+    switch (prefixByte) {
+      case 0x01: return 'http://www.';
+      case 0x02: return 'https://www.';
+      case 0x03: return 'http://';
+      case 0x04: return 'https://';
+      default: return '';
+    }
   }
 }

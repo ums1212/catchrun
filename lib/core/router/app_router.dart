@@ -53,6 +53,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
       ),
+      GoRoute(
+        path: '/join',
+        redirect: (context, state) {
+          final gameId = state.uri.queryParameters['gameId'];
+          final nfcKeyId = state.uri.queryParameters['nfcKeyId'];
+          if (gameId != null) {
+            // nfcKeyId가 있는 경우 참여 로직을 수행하도록 로비 화면으로 전달하거나
+            // 별도의 처리 후 로비로 이동하게 할 수 있습니다.
+            // 여기서는 일단 로비로 이동시키고 로비에서 nfcKeyId가 있다면 
+            // 자동으로 참여 처리를 시도하는 방식을 고려하거나,
+            // 단순히 로비 화면으로 진입시키도록 합니다.
+            return '/lobby/$gameId${nfcKeyId != null ? '?nfcKeyId=$nfcKeyId' : ''}';
+          }
+          return '/home';
+        },
+      ),
       
       // 2. Main Shell (Home, Create, Join, Lobby)
       ShellRoute(
@@ -175,10 +191,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       final onboarding = state.matchedLocation == '/onboarding';
       final splashing = state.matchedLocation == '/splash';
 
+      final isRoot = state.matchedLocation == '/';
+
       // 1. 초기 로딩 상태 (Auth 상태를 아직 확인할 수 없는 경우)
-      // watch 대신 read를 쓰되, redirect가 호출될 때는 이미 상태가 어느 정도 안정된 후임.
       if (authState.isLoading || userProfile.isLoading) {
-        return splashing ? null : '/splash';
+        // 루트 경로에서 시작한 경우에만 스플래시로 이동시켜 초기화를 기다립니다.
+        // 딥링크 등으로 구체적인 경로가 있는 경우는 그 의도를 유지하기 위해 리다이렉트하지 않습니다.
+        return (isRoot && !splashing) ? '/splash' : null;
       }
 
       final user = authState.value;
@@ -186,16 +205,20 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // 2. 미인증 상태
       if (user == null) {
+        // 이미 로그인 화면이면 그대로 둠, 아니면 로그인으로
         return loggingIn ? null : '/login';
       }
 
       // 3. 인증은 되었으나 프로필이 미완성인 상태
       if (profile == null || !profile.isProfileComplete) {
+        // 이미 온보딩 화면이면 그대로 둠, 아니면 온보딩으로
         return onboarding ? null : '/onboarding';
       }
 
       // 4. 모든 설정 완료 상태
-      if (loggingIn || onboarding || splashing) {
+      // 현재 위치가 게이트 화면(root, splash, login, onboarding)인 경우에만 홈으로 보냅니다.
+      // 그 외의 구체적인 위치(로비, 게임 화면 등)는 기존 의도를 존중하여 그대로 유지합니다.
+      if (loggingIn || onboarding || splashing || isRoot) {
         return '/home';
       }
 

@@ -221,6 +221,65 @@ class GameRepository {
     return gameId;
   }
 
+  // 게임 참가 (NFC 열쇠로 참가 - Deep Link)
+  Future<String> joinGameByNfcKey({
+    required String gameId,
+    required String nfcKeyId,
+    required AppUser user,
+  }) async {
+    await _connectivityService.ensureConnection();
+    await _firestore.runTransaction((transaction) async {
+      final gameDoc = await transaction.get(_firestore.collection('games').doc(gameId));
+      if (!gameDoc.exists) throw Exception('게임을 찾을 수 없습니다.');
+
+      final gameData = gameDoc.data()!;
+      if (gameData['keyItem']['nfcKeyId'] != nfcKeyId) {
+        throw Exception('유효하지 않은 보안 열쇠입니다.');
+      }
+
+      if (gameData['status'] != 'lobby') {
+        throw Exception('이미 시작되었거나 종료된 게임입니다.');
+      }
+
+      final participantRef = _firestore
+          .collection('games')
+          .doc(gameId)
+          .collection('participants')
+          .doc(user.uid);
+      
+      final participantDoc = await transaction.get(participantRef);
+      if (participantDoc.exists) return;
+
+      final participant = ParticipantModel(
+        uid: user.uid,
+        nicknameSnapshot: user.nickname ?? '익명',
+        avatarSeedSnapshot: user.avatarSeed,
+        joinedAt: DateTime.now(),
+        stats: ParticipantStats(),
+      );
+
+      transaction.set(participantRef, participant.toMap());
+      transaction.update(_firestore.collection('games').doc(gameId), {
+        'counts.total': FieldValue.increment(1),
+      });
+
+      // 입장 이벤트 기록
+      final eventRef = _firestore.collection('games').doc(gameId).collection('events').doc();
+      transaction.set(eventRef, {
+        'type': 'PLAYER_JOINED',
+        'createdAt': FieldValue.serverTimestamp(),
+        'actorUid': user.uid,
+        'audience': 'all',
+        'payload': {
+          'nickname': user.nickname ?? '익명',
+          'message': '${user.nickname ?? '익명'}님이 입장했습니다.',
+        },
+      });
+    });
+
+    return gameId;
+  }
+
   // 게임 정보 스트림
   Stream<GameModel?> watchGame(String gameId) {
     return _firestore

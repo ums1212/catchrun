@@ -44,12 +44,68 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
       onDetach: _leaveGameSilently,
     );
     _setupKickDetection();
-    // AppBar 초기 설정
+    
+    // Deep Link 참여 처리
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _updateAppBar();
+        _handleDeepLinkJoin();
       }
     });
+
+    // 프로필 로딩 완료 후 다시 시도하기 위해 리스너 추가
+    ref.listenManual(userProvider, (previous, next) {
+      if (next.hasValue && next.value != null && mounted) {
+        _handleDeepLinkJoin();
+      }
+    });
+  }
+
+  bool _deepLinkHandled = false;
+
+  void _handleDeepLinkJoin() async {
+    if (_deepLinkHandled) return;
+    
+    final state = GoRouterState.of(context);
+    final nfcKeyId = state.uri.queryParameters['nfcKeyId'];
+    
+    if (nfcKeyId != null) {
+      // nfcKeyId가 있는 경우, 이미 참여 중인지 확인 후 자동 참여 시도
+      final currentUser = ref.read(userProvider).value;
+      if (currentUser == null) return;
+      
+      _deepLinkHandled = true;
+
+      final gameRepo = ref.read(gameRepositoryProvider);
+      final participants = await gameRepo.watchParticipants(widget.gameId).first;
+      final isAlreadyIn = participants.any((p) => p.uid == currentUser.uid);
+
+      if (!isAlreadyIn && mounted) {
+        // 초대 코드를 알 수 없으므로, NFC 열쇠 기반의 특수한 참여 API가 필요할 수 있음.
+        // 현재는 repository에 joinByNfcKey 같은 메소드가 없으므로, 
+        // nfcKeyId가 맞는지 확인 후 joinGameByQr과 유사하게 처리하거나 
+        // repository에 기능을 추가해야 합니다.
+        // 일단은 안내 메시지 및 참여 시도 로직 스켈레톤 작성.
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: HudText('보안 열쇠로 입장 시도 중...'))
+        );
+        
+        try {
+          // repository에 joinGameByNfcKey(gameId, nfcKeyId, user) 추가 필요
+          await NetworkErrorHandler.wrap(() => gameRepo.joinGameByNfcKey(
+            gameId: widget.gameId,
+            nfcKeyId: nfcKeyId,
+            user: currentUser,
+          ));
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(backgroundColor: Colors.redAccent, content: HudText('입장 실패: $e'))
+            );
+          }
+        }
+      }
+    }
   }
 
   void _updateAppBar() {
@@ -248,8 +304,23 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             throw Exception('기록할 수 없는 태그입니다.');
           }
 
+          final uri = 'https://catchrun.app/join?gameId=${game.id}&nfcKeyId=${game.keyItem.nfcKeyId}';
           final message = NdefMessage(records: [
-            _createNdefTextRecord(game.keyItem.nfcKeyId),
+            NdefRecord(
+              typeNameFormat: TypeNameFormat.wellKnown,
+              type: Uint8List.fromList(utf8.encode('U')),
+              identifier: Uint8List(0),
+              payload: Uint8List.fromList([
+                0x04, // https://
+                ...utf8.encode(uri.replaceFirst('https://', '')),
+              ]),
+            ),
+            NdefRecord(
+              typeNameFormat: TypeNameFormat.external,
+              type: Uint8List.fromList(utf8.encode('android.com:pkg')),
+              identifier: Uint8List(0),
+              payload: Uint8List.fromList(utf8.encode('dev.comon.catchrun')),
+            ),
           ]);
 
           await ndef.write(message: message);
@@ -646,18 +717,4 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
     );
   }
 
-  NdefRecord _createNdefTextRecord(String text) {
-    const languageCode = 'en';
-    final payload = Uint8List.fromList([
-      languageCode.length,
-      ...utf8.encode(languageCode),
-      ...utf8.encode(text),
-    ]);
-    return NdefRecord(
-      typeNameFormat: TypeNameFormat.wellKnown,
-      type: Uint8List.fromList(utf8.encode('T')),
-      identifier: Uint8List(0),
-      payload: payload,
-    );
-  }
 }

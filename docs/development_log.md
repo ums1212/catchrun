@@ -13,6 +13,37 @@
 
 ---
 
+## 2026-01-15 (목)
+
+### 🚀 기능 구현: NFC 보안 열쇠 고도화 및 딥링크 연동 (NFC Security Key & Deep Link Integration)
+
+#### ✅ 주요 작업 및 성과
+- **NFC 기반 앱 런칭 및 자동 참여 시스템 구축**
+    - **Android App Links 설정**: `AndroidManifest.xml`에 `catchrun.app/join` 도메인에 대한 인텐트 필터 및 `autoVerify=true` 설정 추가
+    - **NDEF URI 및 AAR 쓰기**: `LobbyScreen`에서 NFC 태그 기록 시, 특정 게임 참여를 위한 URI(`https://catchrun.app/join?...`)와 안드로이드 앱 자동 실행을 위한 AAR(Android Application Record)을 함께 기록하도록 고도화
+    - **Deep Link 라우팅 구현**: `app_router.dart`에 `/join` 경로 추가 및 쿼리 파라미터(`gameId`, `nfcKeyId`)를 로비(`/lobby/:gameId`)로 전달하는 리다이렉트 로직 구현
+- **로비 자동 참여 로직 구현**
+    - `LobbyScreen`: 딥링크를 통해 진입 시 `nfcKeyId`를 감지하고, 사용자 프로필 로딩 완료 시점에 맞춰 `joinGameByNfcKey`를 트리거하는 자동 참여 프로세스 구축
+- **감옥 탈출 로직 고도화**
+    - `PrisonScreen`: NFC 태그에서 URI 레코드를 직접 파싱하여 `nfcKeyId`를 추출해 탈출 트랜잭션에 활용하도록 수정
+- **코드 안정성 및 품질 확보**
+    - `nfc_manager` 패키지의 파괴적 변경에 대응하여 `NdefRecord` 수동 생성 방식으로 전환(`createUri`, `createExternal` 오류 해결)
+    - `flutter analyze` 정적 분석 전수 통과 (Exit code: 0)
+
+#### 📝 비고 / 특이사항
+- **네비게이션 이슈**: 앱 런칭은 정상 동작하나, 특정 상황에서 리다이렉트 로직이 `/home`으로 덮어씌워지는 문제 발견 및 수정 진행 중 (`app_router.dart` 내 글로벌 리다이렉트 조건 완화)
+- **메시지 통일**: NFC를 통한 입장 메시지를 기존의 코드/QR 입장 메시지 양식과 동일하게 통일하여 UX 일관성 유지
+
+#### 🔗 관련 파일
+- `lib/core/router/app_router.dart` - `/join` 라우트 및 리다이렉트 로직 수정
+- `lib/features/game/presentation/lobby_screen.dart` - NFC 쓰기(URI+AAR) 및 자동 참여 리스너 추가
+- `lib/features/game/presentation/prison_screen.dart` - URI 기반 NFC 읽기 로직 수정
+- `lib/features/game/presentation/prison_screen.dart` - URI 기반 NFC 읽기 로직 수정
+- `lib/features/game/data/game_repository.dart` - `joinGameByNfcKey` 메서드 추가
+- `android/app/src/main/AndroidManifest.xml` - App Links 설정 추가
+
+---
+
 ## 2026-01-14 (수)
 
 ### 🚀 기능 구현: 글로벌 네트워크 연결 체크 및 예외 처리 (Global Network Connectivity Check)
