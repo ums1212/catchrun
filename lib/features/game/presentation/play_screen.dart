@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
 import 'package:catchrun/core/models/game_model.dart';
 import 'package:catchrun/core/models/participant_model.dart';
+import 'package:catchrun/core/network/network_error_handler.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:catchrun/core/providers/app_bar_provider.dart';
 import 'package:go_router/go_router.dart';
@@ -67,7 +68,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
 
   void _initServerTimeOffset() async {
     try {
-      final offset = await ref.read(gameRepositoryProvider).calculateServerTimeOffset();
+      final offset = await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).calculateServerTimeOffset());
       if (mounted) {
         setState(() {
           _serverTimeOffset = offset;
@@ -99,7 +100,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
         final estimatedServerTime = DateTime.now().add(_serverTimeOffset);
         final endsAt = game.startedAt!.add(Duration(seconds: game.durationSec));
         if (estimatedServerTime.isAfter(endsAt)) {
-          ref.read(gameRepositoryProvider).finishGame(game.id);
+          NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).finishGame(game.id));
         }
       }
     });

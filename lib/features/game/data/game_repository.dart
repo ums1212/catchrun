@@ -4,14 +4,19 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:catchrun/core/models/game_model.dart';
 import 'package:catchrun/core/models/participant_model.dart';
 import 'package:catchrun/core/models/user_model.dart';
+import 'package:catchrun/core/network/connectivity_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final gameRepositoryProvider = Provider((ref) => GameRepository(FirebaseFirestore.instance));
+final gameRepositoryProvider = Provider((ref) => GameRepository(
+  FirebaseFirestore.instance,
+  ref.watch(connectivityServiceProvider),
+));
 
 class GameRepository {
   final FirebaseFirestore _firestore;
+  final ConnectivityService _connectivityService;
 
-  GameRepository(this._firestore);
+  GameRepository(this._firestore, this._connectivityService);
 
   // 게임 생성
   Future<String> createGame({
@@ -20,6 +25,7 @@ class GameRepository {
     required AppUser host,
     int durationSec = 600,
   }) async {
+    await _connectivityService.ensureConnection();
 
     final gameId = _firestore.collection('games').doc().id;
     final gameCode = _generateRandomCode(9);
@@ -88,6 +94,7 @@ class GameRepository {
     required String inviteCode,
     required AppUser user,
   }) async {
+    await _connectivityService.ensureConnection();
     // 1. gameCode로 gameId 조회
     final codeDoc = await _firestore.collection('gameCodes').doc(gameCode).get();
     if (!codeDoc.exists) {
@@ -161,6 +168,7 @@ class GameRepository {
     required String qrToken,
     required AppUser user,
   }) async {
+    await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
       final gameDoc = await transaction.get(_firestore.collection('games').doc(gameId));
       if (!gameDoc.exists) throw Exception('게임을 찾을 수 없습니다.');
@@ -242,6 +250,7 @@ class GameRepository {
 
   // 게임 시작
   Future<void> startGame(String gameId) async {
+    await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
       final gameRef = _firestore.collection('games').doc(gameId);
       final gameDoc = await transaction.get(gameRef);
@@ -362,6 +371,7 @@ class GameRepository {
 
   // 게임 종료
   Future<void> finishGame(String gameId) async {
+    await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
       final gameRef = _firestore.collection('games').doc(gameId);
       final gameDoc = await transaction.get(gameRef);
@@ -385,6 +395,7 @@ class GameRepository {
     required String gameId,
     required String uid,
   }) async {
+    await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
       final gameRef = _firestore.collection('games').doc(gameId);
       final participantRef = gameRef.collection('participants').doc(uid);
@@ -438,6 +449,7 @@ class GameRepository {
     required String gameId,
     required String uid,
   }) async {
+    await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
       final gameRef = _firestore.collection('games').doc(gameId);
       final participantRef = gameRef.collection('participants').doc(uid);
@@ -481,6 +493,7 @@ class GameRepository {
     required String copUid,
     required String robberUid,
   }) async {
+    await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
       final gameRef = _firestore.collection('games').doc(gameId);
       final copRef = gameRef.collection('participants').doc(copUid);
@@ -570,6 +583,7 @@ class GameRepository {
     required String rescuerUid,
     required String jailedUid,
   }) async {
+    await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
       final gameRef = _firestore.collection('games').doc(gameId);
       final rescuerRef = gameRef.collection('participants').doc(rescuerUid);
@@ -643,6 +657,7 @@ class GameRepository {
     required String uid,
     required String scannedId,
   }) async {
+    await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
       final gameRef = _firestore.collection('games').doc(gameId);
       final participantRef = gameRef.collection('participants').doc(uid);
@@ -748,6 +763,7 @@ class GameRepository {
     DocumentReference? docRef;
     
     try {
+      await _connectivityService.ensureConnection();
       final localBefore = DateTime.now();
       
       // Firestore에 더미 문서를 작성하여 서버 타임스탬프 획득

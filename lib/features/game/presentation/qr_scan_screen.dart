@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:catchrun/core/network/network_error_handler.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:catchrun/core/providers/app_bar_provider.dart';
@@ -99,18 +100,18 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
 
     try {
       if (widget.isCop) {
-        await ref.read(gameRepositoryProvider).catchRobber(
+        await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).catchRobber(
           gameId: widget.gameId,
           copUid: currentUser.uid,
           robberUid: targetUid,
-        );
+        ));
         _showSuccess('대상 체포 완료');
       } else {
-        await ref.read(gameRepositoryProvider).rescueRobber(
+        await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).rescueRobber(
           gameId: widget.gameId,
           rescuerUid: currentUser.uid,
           jailedUid: targetUid,
-        );
+        ));
         _showSuccess('아군 석방 완료');
       }
       

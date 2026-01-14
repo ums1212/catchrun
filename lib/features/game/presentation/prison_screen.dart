@@ -9,6 +9,7 @@ import 'package:app_settings/app_settings.dart';
 import 'package:catchrun/core/models/game_model.dart';
 import 'package:catchrun/core/models/participant_model.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
+import 'package:catchrun/core/network/network_error_handler.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:catchrun/core/providers/app_bar_provider.dart';
 import 'package:catchrun/core/widgets/hud_text.dart';
@@ -56,7 +57,7 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
 
   void _initServerTimeOffset() async {
     try {
-      final offset = await ref.read(gameRepositoryProvider).calculateServerTimeOffset();
+      final offset = await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).calculateServerTimeOffset());
       if (mounted) setState(() => _serverTimeOffset = offset);
     } catch (e) {
       // Ignore
@@ -159,7 +160,7 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
         final scannedId = String.fromCharCodes(record.payload.sublist(1 + languageCodeLength));
         final currentUser = ref.read(userProvider).value;
         if (currentUser == null) throw Exception('User authentication lost.');
-        await ref.read(gameRepositoryProvider).usePrisonKey(gameId: widget.gameId, uid: currentUser.uid, scannedId: scannedId);
+        await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).usePrisonKey(gameId: widget.gameId, uid: currentUser.uid, scannedId: scannedId));
         await NfcManager.instance.stopSession();
         if (mounted) {
           navigatorState.pop();

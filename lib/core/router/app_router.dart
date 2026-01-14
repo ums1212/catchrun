@@ -17,7 +17,7 @@ import 'package:catchrun/features/game/presentation/result_screen.dart';
 import 'package:catchrun/core/router/main_shell_wrapper.dart';
 import 'package:catchrun/core/router/game_shell_wrapper.dart';
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 final _gameShellNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -36,7 +36,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final gameShellObserver = ref.watch(gameShellRouteObserverProvider);
   
   return GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     debugLogDiagnostics: true,
     routes: [

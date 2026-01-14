@@ -2,6 +2,7 @@ import 'package:catchrun/core/models/game_model.dart';
 import 'package:catchrun/core/router/app_router.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
+import 'package:catchrun/core/network/network_error_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:catchrun/core/providers/app_bar_provider.dart';
@@ -76,7 +77,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> with RouteA
       final user = ref.read(userProvider).value;
       if (user == null) throw Exception('사용자 정보를 찾을 수 없습니다.');
 
-      final gameId = await ref.read(gameRepositoryProvider).createGame(
+      final gameId = await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).createGame(
             title: _titleController.text,
             durationSec: _durationMinutes * 60,
             rule: GameRule(
@@ -87,7 +88,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> with RouteA
               autoAssignRoles: true,
             ),
             host: user,
-          );
+          ));
 
       if (!mounted) return;
 

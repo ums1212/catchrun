@@ -1,6 +1,7 @@
 import 'package:catchrun/core/router/app_router.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
+import 'package:catchrun/core/network/network_error_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:catchrun/core/providers/app_bar_provider.dart';
@@ -196,7 +197,7 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> with SingleTick
       final user = ref.read(userProvider).value;
       if (user == null) throw Exception('사용자 정보를 찾을 수 없습니다.');
 
-      final gameId = await joinAction();
+      final gameId = await NetworkErrorHandler.wrap(() => joinAction());
       if (!mounted) return;
       context.pushReplacement('/lobby/$gameId');
 

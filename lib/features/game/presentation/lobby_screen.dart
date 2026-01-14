@@ -1,3 +1,4 @@
+import 'package:catchrun/core/network/network_error_handler.dart';
 import 'package:catchrun/core/widgets/hud_dialog.dart';
 import 'package:catchrun/features/game/presentation/widgets/lobby_game_code_card.dart';
 import 'package:catchrun/features/game/presentation/widgets/lobby_participant_tile.dart';
@@ -109,10 +110,10 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   Future<void> _leaveGameSilently() async {
     final currentUser = ref.read(userProvider).value;
     if (currentUser != null) {
-      await ref.read(gameRepositoryProvider).leaveGame(
+      await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).leaveGame(
             gameId: widget.gameId,
             uid: currentUser.uid,
-          );
+          ));
     }
   }
 
@@ -334,7 +335,6 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
               SafeArea(
                 child: Column(
                   children: [
-                    const SizedBox(height: kToolbarHeight),
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: LobbyGameCodeCard(game: game),
@@ -416,7 +416,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                                     }
 
                                     try {
-                                      await ref.read(gameRepositoryProvider).startGame(game.id);
+                                      await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).startGame(game.id));
                                     } catch (e) {
                                       if (context.mounted) {
                                         ScaffoldMessenger.of(context).showSnackBar(
@@ -550,10 +550,10 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
           fontSize: 14,
           onPressed: () async {
             final navigator = Navigator.of(context, rootNavigator: true);
-            await ref.read(gameRepositoryProvider).kickParticipant(
+            await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).kickParticipant(
               gameId: game.id,
               uid: p.uid,
-            );
+            ));
             navigator.pop();
           },
         ),
@@ -606,11 +606,11 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                     ),
                     title: const HudText('TACTICAL UNIT (경찰)'),
                     onTap: () async {
-                      await ref.read(gameRepositoryProvider).updateParticipantRole(
+                      await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).updateParticipantRole(
                         gameId: game.id,
                         uid: p.uid,
                         role: ParticipantRole.cop,
-                      );
+                      ));
                       if (context.mounted) Navigator.pop(context);
                     },
                   ),
@@ -628,11 +628,11 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                     ),
                     title: const HudText('TARGET VESSEL (도둑)'),
                     onTap: () async {
-                      await ref.read(gameRepositoryProvider).updateParticipantRole(
+                      await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).updateParticipantRole(
                         gameId: game.id,
                         uid: p.uid,
                         role: ParticipantRole.robber,
-                      );
+                      ));
                       if (context.mounted) Navigator.pop(context);
                     },
                   ),

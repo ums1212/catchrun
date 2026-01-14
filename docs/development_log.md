@@ -13,7 +13,36 @@
 
 ---
 
-## 2026-01-13 (월)
+## 2026-01-14 (수)
+
+### 🚀 기능 구현: 글로벌 네트워크 연결 체크 및 예외 처리 (Global Network Connectivity Check)
+
+#### ✅ 주요 작업 및 성과
+- **애플리케이션 전역 네트워크 모니터링 시스템 구축**
+    - `connectivity_plus` 패키지를 활용하여 기기의 인터넷 연결 상태를 실시간으로 감시하는 `ConnectivityService` 구현
+    - 모든 주요 네트워크 요청 전 `ensureConnection()` 호출을 강제하여 오프라인 상태에서의 불필요한 대기 방지
+- **사이버펑크 테마의 전역 안내 다이얼로그(`NetworkErrorDialog`) 구현**
+    - 연결 끊김 시 사용자에게 알림을 제공하고 "설정" 버튼을 통해 기기의 Wi-Fi 설정 화면으로 즉시 이동 가능하도록 구현
+    - `GoRouter`의 `rootNavigatorKey`를 활용하여 앱의 어떤 화면에서도 다이얼로그를 띄울 수 있도록 설계
+- **리포지토리 및 컨트롤러 계층 통합**
+    - `AuthRepository`, `UserRepository`, `GameRepository`의 모든 데이터 통신 로직에 연결 확인 절차 통합
+    - `NetworkErrorHandler`를 통해 비동기 작업 중 발생하는 네트워크 예외를 포괄적으로 잡고 사용자에게 시각적 피드백 제공
+- **안정성 및 디버깅**
+    - `flutter analyze`를 통한 정적 분석 및 컴파일 에러(누락된 임포트, 필드 등) 전수 수정
+    - 오프라인 상태에서 로그아웃 시 반응이 없던 버그 해결 및 서버 시간 동기화 로직 보완
+
+#### 📝 비고 / 특이사항
+- **UX 일관성**: 단순한 시스템 경고창 대신 앱의 SF 테마와 일치하는 `HudDialog` 기반 디자인을 적용하여 몰입감 유지
+- **최신 API 대응**: `connectivity_plus` v6의 리스트 반환 방식을 고려한 견고한 연결 판별 로직 적용
+- **문제 해결**: 구현 과정에서 발생한 `AuthRepository` 필드 누락 및 `SciFiButton` 오타 등 휴먼 에러를 전면 수정하여 빌드 안정성 확보
+
+#### 🔗 관련 문서
+- [implementation_plan.md](brain/17ab7a78-fd16-4cae-a839-2bbece995b13/implementation_plan.md)
+- [walkthrough.md](brain/17ab7a78-fd16-4cae-a839-2bbece995b13/walkthrough.md)
+
+---
+
+## 2026-01-13 (화)
 
 ### 🚀 UX 개선: 프로필 설정 취소 시 익명 계정 자동 삭제 및 로그아웃 구현 (Anonymous Account Deletion on Cancel)
 
