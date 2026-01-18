@@ -13,6 +13,623 @@
 
 ---
 
+## 2026-01-18 (일)
+ 
+### 🚀 버그 수정: 다이얼로그 텍스트 밑줄 및 스타일 상속 이슈 해결 (HUD Dialog Text Style Fix)
+
+#### ✅ 주요 작업 및 성과
+- **다이얼로그 전역 Material 테마 적용**
+    - `HudDialog`: 다이얼로그의 최상위 위젯을 `Material`로 감싸서 텍스트 스타일 상속 계층이 끊기는 문제 해결
+    - **원인 해결**: `showGeneralDialog`를 통해 생성된 독립적인 위젯 트리에 `Material` 위젯이 없어 발생하는 Flutter의 기본 텍스트 밑줄(노란색 쌍줄) 현상 제거
+- **디자인 일관성 유지**
+    - `MaterialType.transparency`를 적용하여 기존의 글래스모피즘(유리 질감) 배경은 유지하면서 텍스트 스타일만 정상적으로 상속되도록 최적화
+
+#### 📝 비고 / 특이사항
+- **UX 개선**: 로그아웃 다이얼로그 등 모든 `HudDialog` 기반 알림창에서 텍스트가 깨지거나 밑줄이 생기는 문제를 해결하여 시인성 확보
+
+#### 🔗 관련 파일
+- `lib/core/widgets/hud_dialog.dart` - `Material` 위젯 도입 및 텍스트 스타일 보정
+
+---
+ 
+### 🚀 버그 수정: 도둑 플레이어 점수 마이너스 표시 오류 해결 (Robber Score Underflow Fix)
+ 
+#### ✅ 주요 작업 및 성과
+- **서버 시간 오프셋 보정 로직 통합**
+    - `GameRepository`: 점수 산출 및 시간 계산이 필요한 주요 메소드(`finishGame`, `catchRobber`, `usePrisonKey`)에 `serverTimeOffset` 파라미터를 추가하고 이를 반영하도록 고도화
+    - **시간 불일치 해결**: 기기 로컬 시간(`DateTime.now()`) 대신 추정 서버 시간(`getEstimatedServerTime`)을 사용하여 기기 간 시간 차이로 인한 데이터 왜곡 방지
+- **생존 시간 계산 안전성 확보**
+    - 도둑의 생존 시간(`addedSurvivalSec`) 계산 시 `max(0, ...)`를 적용하여, 클라이언트-서버 간 미세한 시간차나 설정 오류로 인해 점수가 음수가 되는 현상을 원천 차단
+- **UI-Repository 간 데이터 동기화**
+    - `PlayScreen`, `PrisonScreen`, `QrScanScreen`: 각 화면에서 계산된 서버 시간 오프셋을 Repository 호출 시 정확히 전달하도록 전체 호출부 수정
+ 
+#### 📝 비고 / 특이사항
+- **데이터 신뢰성 향상**: 기기 시간이 수동으로 잘못 설정된 환경에서도 게임 데이터(점수, 생존 시간)의 무결성을 보장할 수 있게 됨
+- **로직 일관성**: 모든 핵심 게임 액션(체포, 탈출, 종료)에서 동일한 시간 보정 알고리즘을 사용하도록 표준화
+ 
+#### 🔗 관련 파일
+- `lib/features/game/data/game_repository.dart` - 서버 시간 오프셋 적용 및 음수 방지 로직
+- `lib/features/game/presentation/play_screen.dart` - 오프셋 전달 로직 추가
+- `lib/features/game/presentation/prison_screen.dart` - 오프셋 전달 로직 추가
+- `lib/features/game/presentation/qr_scan_screen.dart` - 오프셋 전달 로직 추가
+ 
+---
+ 
+
+### 🚀 버그 수정: 감옥 수감 중 게임 종료 미작동 해결 (Prison Screen Game Finish Fix)
+
+#### ✅ 주요 작업 및 성과
+- **감옥 화면 내 종료 체크 로직 구현**
+    - `PrisonScreen`: 방장(Host) 권한이 있는 사용자일 경우, 감옥 화면에서도 실시간으로 게임 종료 시간을 확인하고 `finishGame`을 트리거하도록 개선
+    - **원인 해결**: 기존에 `PlayScreen`에만 존재하던 종료 로직을 감옥 화면으로 확장하여, 방장이 수감된 상태에서도 게임이 정상적으로 종료되도록 수정
+- **타이머 연동 고도화**
+    - `_startTimer` 주기 내에 종료 조건 검사(`_checkEndConditions`)를 포함시켜 시간 지연 없는 즉각적인 상태 전환 보장
+
+#### 📝 비고 / 특이사항
+- **UX 신뢰도 향상**: 남은 시간이 00:00임에도 게임이 계속 진행되어 결과 화면을 보지 못하던 심각한 버그를 해결하여 게임의 정체성 회복
+
+#### 🔗 관련 파일
+- `lib/features/game/presentation/prison_screen.dart` - `_checkEndConditions` 추가 및 타이머 연동
+
+---
+
+### 🚀 아키텍처 개선: 분산 게임 종료 시스템 구축 (Decentralized Game Finish System)
+
+#### ✅ 주요 작업 및 성과
+- **방장 의존성 제거 및 분산 검증 로직 구현**
+    - 기존 방장(Host) 1인에게 의존하던 종료 로직을 모든 참가자가 참여하는 구조로 전면 개편
+    - **Smart Jitter 적용**: 클라이언트별 0~3초 랜덤 지연을 통해 동시 요청 부하(Thundering Herd) 현상 방지
+- **Firestore 트랜잭션 최적화 및 멱등성 확보**
+    - `GameRepository.finishGame`: 트랜잭션 진입 전 상태 선행 체크(First-order Check)와 트랜잭션 내 원자적 재검증(Atomic Verifier)을 결합하여 최초 1인만 성공하도록 보장
+- **UI 연동 및 예외 처리 강화**
+    - `PlayScreen`, `PrisonScreen`: 방장 여부와 상관없이 모든 기기에서 종료 조건을 감시하도록 수정
+    - 트랜잭션 충돌 시 발생하는 예외를 안전하게 처리하여 사용자 화면에 영향이 없도록 조치
+
+#### 📝 비고 / 특이사항
+- **신뢰성 확보**: 방장이 게임 중 앱을 강제 종료하거나 네트워크가 유실되더라도 다른 참가자 중 1명이라도 앱이 켜져 있으면 게임이 정상 종료됨
+- **전문적 최적화**: 트랜잭션 충돌을 방어하기 위한 Jitter 기법을 도입하여 서버 부하 걱정 없는 대안 제시
+
+#### 🔗 관련 파일
+- `lib/features/game/data/game_repository.dart` - 멱등성 트랜잭션 구현
+- `lib/features/game/presentation/play_screen.dart` - 분산 체크 및 Jitter 적용
+- `lib/features/game/presentation/prison_screen.dart` - 분산 체크 및 Jitter 적용
+
+---
+
+---
+
+### 🚀 버그 수정: 화면 전환 시 QR 다이얼로그 잔상 제거 (QR Dialog Persistence Fix)
+
+#### ✅ 주요 작업 및 성과
+- **다이얼로그 상태 추적 및 강제 종료 로직 구현**
+    - `PlayScreen`, `PrisonScreen`: 다이얼로그의 열림 상태를 추적하는 `_isDialogOpen` 변수 추가
+    - **안전한 화면 전환**: 도둑이 체포되어 수감 화면으로 넘어가거나, 석방되어 플레이 화면으로 복귀할 때 열려 있는 다이얼로그(`rootNavigator`)를 먼저 닫은 후 이동(`context.go`)하도록 개선
+- **다이얼로그 생명주기 관리 최적화**
+    - `HudDialog.show().then(...)` 및 "닫기" 버튼의 콜백을 통해 다이얼로그가 닫힐 때 상태 변수가 정확히 업데이트되도록 보정
+    - `rootNavigator` 스택을 확인하여 존재할 때만 `pop`을 호출하도록 방어 로직 강화
+
+#### 📝 비고 / 특이사항
+- **UX 개선**: 화면이 전환되었음에도 이전 화면의 다이얼로그가 남아 상호작용을 방해하고 뒤로가기를 두 번 해야 했던 불편함을 해소
+- **구조적 해결**: 다이얼로그가 `rootNavigator`에 위치하여 화면 이동(`context.go`) 시 자동으로 닫히지 않던 엔진 특성을 고려한 명시적 종료 처리 적용
+
+#### 🔗 관련 파일
+- `lib/features/game/presentation/play_screen.dart` - 다이얼로그 추적 및 전환 로직 수정
+- `lib/features/game/presentation/prison_screen.dart` - 다이얼로그 추적 및 복귀 로직 수정
+
+---
+
+
+### 🚀 기능 구현: 게임 활동 로그 확인 시스템 구축 (Activity Log Monitoring System)
+
+#### ✅ 주요 작업 및 성과
+- **전역 이벤트 모니터링 스트림 구현**
+    - `GameRepository`: `watchAllEvents(String gameId)` 메소드를 추가하여 해당 게임의 모든 기록을 최신순으로 실시간 감시 가능하도록 고도화
+- **플레이 및 결과 화면 UI 통합**
+    - **PlayScreen**: 인원수 통계 섹션 하단에 "활동 로그 확인" 버튼을 추가하여 플레이 중 실시간 상황 복기 가능
+    - **ResultScreen**: 최종 순위표 하단에 동일한 버튼을 배치하여 게임 종료 후 전체 타임라인 확인 지원
+- **사용자 중심 로그 다이얼로그 구현**
+    - `ActivityLogDialogContent`: 발생 시간([HH:mm:ss])과 활동 메시지를 가독성 있게 표시하는 전용 로그 뷰어 구축
+    - 리스트가 길어질 경우를 대비한 스크롤 및 최대 높이 제한 적용
+
+#### 📝 비고 / 특이사항
+- **코드 재사용성**: 하나의 로그 위젯(`ActivityLogDialogContent`)을 플레이 화면과 결과 화면에서 공유하여 유지보수 효율 극대화
+- **UX 가독성**: 결과 화면에서는 '영웅들의 발자취'라는 서사적인 타이틀을 적용하여 게임 마무리 경험 향상
+
+#### 🔗 관련 파일
+- `lib/features/game/data/game_repository.dart` - `watchAllEvents` 스트림 추가
+- `lib/features/game/presentation/play_screen.dart` - 활동 로그 다이얼로그 연동
+- `lib/features/game/presentation/result_screen.dart` - 결과 화면 내 로그 확인 버튼 추가
+- `lib/features/game/presentation/widgets/play_widgets.dart` - `ActivityLogDialogContent` 위젯 구현
+
+---
+
+### 🚀 UX 개선: Prison Screen 하단 잘림 현상 해결 (스크롤 추가 및 레이아웃 최적화)
+
+#### ✅ 주요 작업 및 성과
+- **`PrisonScreen` 스크롤 기능 추가**: 화면 내용이 기기 높이를 초과할 경우 하단 UI 요소가 잘리는 문제를 해결하기 위해 `SingleChildScrollView`를 적용
+- **레이아웃 최적화**: `SafeArea` 및 `Expanded` 위젯을 활용하여 다양한 화면 크기 및 노치 디자인에 대응하도록 UI 구성 요소를 재배치
+- **일관된 디자인 유지**: 기존 `PrisonScreen`의 사이버펑크 테마와 `HudDialog` 스타일을 유지하면서 스크롤 기능을 통합
+
+#### 📝 비고 / 특이사항
+- **사용자 경험 향상**: 특정 기기에서 발생하던 UI 잘림 현상을 해결하여 모든 사용자가 원활하게 게임을 플레이할 수 있도록 개선
+- **반응형 UI 강화**: 향후 다양한 해상도의 기기에서도 안정적인 화면을 제공할 수 있는 기반 마련
+
+#### 🔗 관련 파일
+- `lib/features/game/presentation/prison_screen.dart` - `SingleChildScrollView` 및 레이아웃 최적화
+
+---
+
+### 🚀 UX 개선: 게임 진행 중 뒤로가기 종료 확인 다이얼로그 안정화 (Game Shell Back Navigation Fix)
+
+#### ✅ 주요 작업 및 성과
+- **Game Shell 전역 뒤로가기 제어 시스템 구축**
+    - `GameShellWrapper`: 게임 플레이 관련 모든 화면(`PlayScreen`, `PrisonScreen`, `QrScanScreen`)을 감싸는 쉘 레벨에 `PopScope`를 적용하여 시스템 뒤로가기 이벤트를 일관되게 가로채도록 개선
+    - **종료 확인 다이얼로그 통합**: 뒤로가기 발생 시 "정말 게임에서 나가시겠습니까?" 다이얼로그를 표시하고, 사용자 승인 시에만 홈 화면으로 이동하도록 로직 통합
+- **구조적 버그 원인 파악 및 코드 정돈**
+    - **원인 분석**: `PlayScreen`이 `GameShellNavigator`의 루트(첫 번째) 화면일 경우, 개별 `PopScope`가 Navigator의 스택 판단 로직에 의해 무시될 수 있는 현상 확인 및 해결
+    - **중복 제거**: `PlayScreen` 내부에 개별적으로 구현되었던 다이얼로그 로직 및 `PopScope`를 제거하여 코드 유지보수성 향상
+
+#### 📝 비고 / 특이사항
+- **UX 신뢰도 향상**: 기존에 일부 상황에서 뒤로가기 시 앱이 즉시 종료되던 문제를 구조적으로 해결하여 사용자 피드백 반영
+- **확장성**: 향후 게임 쉘 내에 새로운 화면이 추가되더라도 별도의 설정 없이 뒤로가기 방지 로직이 즉시 적용되는 구조 확보
+
+#### 🔗 관련 파일
+- `lib/core/router/game_shell_wrapper.dart` - 전역 `PopScope` 및 종료 다이얼로그 구현
+- `lib/features/game/presentation/play_screen.dart` - 중복 로직 제거 및 코드 정리
+
+---
+
+## 2026-01-15 (목)
+
+### 🚀 기능 구현: NFC 보안 열쇠 고도화 및 딥링크 연동 (NFC Security Key & Deep Link Integration)
+
+#### ✅ 주요 작업 및 성과
+- **NFC 기반 앱 런칭 및 자동 참여 시스템 구축**
+    - **Android App Links 설정**: `AndroidManifest.xml`에 `catchrun.app/join` 도메인에 대한 인텐트 필터 및 `autoVerify=true` 설정 추가
+    - **NDEF URI 및 AAR 쓰기**: `LobbyScreen`에서 NFC 태그 기록 시, 특정 게임 참여를 위한 URI(`https://catchrun.app/join?...`)와 안드로이드 앱 자동 실행을 위한 AAR(Android Application Record)을 함께 기록하도록 고도화
+    - **Deep Link 라우팅 구현**: `app_router.dart`에 `/join` 경로 추가 및 쿼리 파라미터(`gameId`, `nfcKeyId`)를 로비(`/lobby/:gameId`)로 전달하는 리다이렉트 로직 구현
+- **로비 자동 참여 로직 구현**
+    - `LobbyScreen`: 딥링크를 통해 진입 시 `nfcKeyId`를 감지하고, 사용자 프로필 로딩 완료 시점에 맞춰 `joinGameByNfcKey`를 트리거하는 자동 참여 프로세스 구축
+- **감옥 탈출 로직 고도화**
+    - `PrisonScreen`: NFC 태그에서 URI 레코드를 직접 파싱하여 `nfcKeyId`를 추출해 탈출 트랜잭션에 활용하도록 수정
+- **코드 안정성 및 품질 확보**
+    - `nfc_manager` 패키지의 파괴적 변경에 대응하여 `NdefRecord` 수동 생성 방식으로 전환(`createUri`, `createExternal` 오류 해결)
+    - `flutter analyze` 정적 분석 전수 통과 (Exit code: 0)
+
+#### 📝 비고 / 특이사항
+- **네비게이션 이슈**: 앱 런칭은 정상 동작하나, 특정 상황에서 리다이렉트 로직이 `/home`으로 덮어씌워지는 문제 발견 및 수정 진행 중 (`app_router.dart` 내 글로벌 리다이렉트 조건 완화)
+- **메시지 통일**: NFC를 통한 입장 메시지를 기존의 코드/QR 입장 메시지 양식과 동일하게 통일하여 UX 일관성 유지
+
+#### 🔗 관련 파일
+- `lib/core/router/app_router.dart` - `/join` 라우트 및 리다이렉트 로직 수정
+- `lib/features/game/presentation/lobby_screen.dart` - NFC 쓰기(URI+AAR) 및 자동 참여 리스너 추가
+- `lib/features/game/presentation/prison_screen.dart` - URI 기반 NFC 읽기 로직 수정
+- `lib/features/game/presentation/prison_screen.dart` - URI 기반 NFC 읽기 로직 수정
+- `lib/features/game/data/game_repository.dart` - `joinGameByNfcKey` 메서드 추가
+- `android/app/src/main/AndroidManifest.xml` - App Links 설정 추가
+
+---
+
+## 2026-01-14 (수)
+
+### 🚀 기능 구현: 글로벌 네트워크 연결 체크 및 예외 처리 (Global Network Connectivity Check)
+
+#### ✅ 주요 작업 및 성과
+- **애플리케이션 전역 네트워크 모니터링 시스템 구축**
+    - `connectivity_plus` 패키지를 활용하여 기기의 인터넷 연결 상태를 실시간으로 감시하는 `ConnectivityService` 구현
+    - 모든 주요 네트워크 요청 전 `ensureConnection()` 호출을 강제하여 오프라인 상태에서의 불필요한 대기 방지
+- **사이버펑크 테마의 전역 안내 다이얼로그(`NetworkErrorDialog`) 구현**
+    - 연결 끊김 시 사용자에게 알림을 제공하고 "설정" 버튼을 통해 기기의 Wi-Fi 설정 화면으로 즉시 이동 가능하도록 구현
+    - `GoRouter`의 `rootNavigatorKey`를 활용하여 앱의 어떤 화면에서도 다이얼로그를 띄울 수 있도록 설계
+- **리포지토리 및 컨트롤러 계층 통합**
+    - `AuthRepository`, `UserRepository`, `GameRepository`의 모든 데이터 통신 로직에 연결 확인 절차 통합
+    - `NetworkErrorHandler`를 통해 비동기 작업 중 발생하는 네트워크 예외를 포괄적으로 잡고 사용자에게 시각적 피드백 제공
+- **안정성 및 디버깅**
+    - `flutter analyze`를 통한 정적 분석 및 컴파일 에러(누락된 임포트, 필드 등) 전수 수정
+    - 오프라인 상태에서 로그아웃 시 반응이 없던 버그 해결 및 서버 시간 동기화 로직 보완
+
+#### 📝 비고 / 특이사항
+- **UX 일관성**: 단순한 시스템 경고창 대신 앱의 SF 테마와 일치하는 `HudDialog` 기반 디자인을 적용하여 몰입감 유지
+- **최신 API 대응**: `connectivity_plus` v6의 리스트 반환 방식을 고려한 견고한 연결 판별 로직 적용
+- **문제 해결**: 구현 과정에서 발생한 `AuthRepository` 필드 누락 및 `SciFiButton` 오타 등 휴먼 에러를 전면 수정하여 빌드 안정성 확보
+
+#### 🔗 관련 문서
+- [implementation_plan.md](brain/17ab7a78-fd16-4cae-a839-2bbece995b13/implementation_plan.md)
+- [walkthrough.md](brain/17ab7a78-fd16-4cae-a839-2bbece995b13/walkthrough.md)
+
+---
+
+## 2026-01-13 (화)
+
+### 🚀 UX 개선: 프로필 설정 취소 시 익명 계정 자동 삭제 및 로그아웃 구현 (Anonymous Account Deletion on Cancel)
+
+#### ✅ 주요 작업 및 성과
+- **보안 및 데이터 정화: 익명 계정 삭제 프로세스 통합 및 확장**
+    - 프로필 설정 단계뿐만 아니라, 홈 화면에서 로그아웃할 때도 익명 계정인 경우 자동으로 데이터를 정화하도록 로직 확장
+    - `AuthController.signOut()`: 익명 계정 여부를 확인하여 데이터 및 계정 삭제를 수행하도록 로직 통합
+- **이탈 방지 확인 다이얼로그 문구 보안**
+    - `HomeScreen` 및 `OnboardingScreen`: 로그아웃/취소 시 "익명 계정인 경우 모든 데이터가 삭제됩니다." 안내 문구 추가로 사용자 인지 강화
+
+#### 📝 비고 / 특이사항
+- **개인정보 보호**: 프로필이 완성되지 않은 유령 계정이 DB에 쌓이는 것을 방지하여 데이터 품질 및 개인정보 관리 효율성 향상
+- **라우팅 자동화**: 별도의 `context.go` 호출 없이 `authStateChangesProvider`의 상태 변화를 감지하여 `app_router.dart`의 리다이렉션 로직이 자연스럽게 동작하도록 설계
+
+#### 🔗 관련 파일
+- `lib/core/auth/auth_repository.dart` - 익명 계정 삭제 메서드 추가
+- `lib/core/user/user_repository.dart` - 익명 데이터 삭제 메서드 추가
+- `lib/features/auth/auth_controller.dart` - `cancelRegistration` 통합 로직 구현
+- `lib/features/onboarding/onboarding_screen.dart` - `PopScope` 및 확인 다이얼로그 적용
+
+---
+
+### 🚀 UX 개선: 홈 및 로그인 화면 뒤로가기 종료 확인 다이얼로그 구현 (Back Navigation Exit Dialog)
+
+#### ✅ 주요 작업 및 성과
+- **앱 종료 확인 프로세스 도입**
+    - 홈 화면 및 로그인 화면에서 실수로 뒤로가기를 눌러 앱이 즉시 종료되는 문제를 방지하기 위해 `PopScope`를 활용한 확인 다이얼로그 구현
+    - `HudDialog.show()`를 사용하여 "캐치런을 종료하시겠습니까?" 메시지 표시 및 '취소', '종료' 버튼 제공
+- **ShellRoute 내 PopScope 동작 버그 수정**
+    - **문제**: `ShellRoute` 내부 화면인 `HomeScreen`에 직접 `PopScope`를 적용했을 때, 상위 Navigator에 의해 이벤트가 무시되어 다이얼로그 없이 앱이 종료되는 현상 발견
+    - **해결**: 공통 래퍼인 `MainShellWrapper`에 `PopScope`를 이동 적용하고, `GoRouterState`를 통해 현재 경로가 `/home`인 경우에만 종료 확인 로직이 동작하도록 최적화
+- **정적 분석 및 코드 건강도 개선**
+    - `HomeScreen`에서 중복된 `PopScope` 및 헬퍼 메서드 제거
+    - 사용하지 않는 `flutter/services.dart` 임포트 정리 및 `flutter analyze` 통과
+
+#### 📝 비고 / 특이사항
+- **일관된 UX**: 로그인 화면(독립 경로)과 홈 화면(쉘 경로) 모두에서 동일한 스타일의 종료 확인 창을 제공하여 사용자 경험의 일관성 확보
+- **라우팅 최적화**: 쉘 레벨에서 경로를 판별하여 이벤트를 제어함으로써 향후 다른 쉘 내부 화면으로의 확장이 용이한 구조 확보
+
+#### 🔗 관련 파일
+- `lib/core/router/main_shell_wrapper.dart` - 공통 `PopScope` 적용 및 종료 로직 통합
+- `lib/features/home/home_screen.dart` - 중복 로직 제거 및 코드 정리
+- `lib/features/auth/login_screen.dart` - 독립적인 `PopScope` 적용
+
+---
+
+### 🚀 UX 개선: 결과 화면 뒤로가기 동작 수정 (Result Screen Back Navigation Fix)
+
+#### ✅ 주요 작업 및 성과
+- **뒤로가기 가로채기 및 리다이렉션 구현**
+    - `ResultScreen`: `PopScope`를 도입하여 시스템 뒤로가기 버튼 클릭 시 앱이 종료되는 대신 홈 화면(`/home`)으로 이동하도록 수정
+    - **네비게이션 제어**: `canPop: false` 설정 및 `onPopInvokedWithResult`에서 `context.go('/home')` 호출
+- **UI 정리**
+    - `AppBar`: `automaticallyImplyLeading: false`를 설정하여 불필요한 기본 뒤로가기 아이콘 제거
+
+#### 📝 비고 / 특이사항
+- **UX 개선**: 게임 종료 후 결과 화면이 스택의 최상위일 때 뒤로가기로 우발적인 앱 종료가 발생하는 문제를 방지하고 자연스럽게 홈으로 유도함
+
+#### 🔗 관련 파일
+- `lib/features/game/presentation/result_screen.dart` - `PopScope` 적용 및 앱바 수정
+
+---
+
+
+### � 버그 수정: 게임 시작 시 타이머 동기화 문제 해결 (Game Timer Synchronization Fix)
+
+#### ✅ 주요 작업 및 성과
+- **문제 원인 분석 및 해결**
+    - **문제 현상**: 게임 시작 시 타이머가 정상 동작하지 않거나 다른 기기와 시간이 맞지 않는 문제 발생
+    - **근본 원인**: `startGame()` 메서드에서 `endsAt`를 **호스트 클라이언트의 로컬 시간** 기준으로 계산하여 저장
+        - 서버 타임스탬프(`startedAt`)와 클라이언트 시간(`endsAt`)이 혼용되어 기기 간 시간 불일치 발생
+- **서버 시간 기반 타이머 계산으로 전환**
+    - `PlayScreen`: `endsAt` 대신 **`startedAt + durationSec`** 을 사용하여 종료 시간 계산
+        - 기존: `game.endsAt!.difference(estimatedServerTime)`
+        - 변경: `game.startedAt!.add(Duration(seconds: game.durationSec)).difference(estimatedServerTime)`
+    - `PrisonScreen`: 동일한 로직 적용으로 감옥 화면에서도 정확한 타이머 표시
+    - `_checkEndConditions()`: 게임 종료 조건 검사 시에도 서버 시간 기반으로 일관성 유지
+
+#### 📝 비고 / 특이사항
+- **기술적 이유**: `startedAt`은 Firestore 서버 타임스탬프(`FieldValue.serverTimestamp()`)로 저장되어 모든 클라이언트에서 동일한 값을 갖지만, `endsAt`는 호스트의 로컬 시간으로 계산되어 불일치 발생
+- **서버 시간 offset**: 기존에 구현되어 있던 `_serverTimeOffset`을 활용하여 정확한 남은 시간 계산
+
+#### 🔗 관련 파일
+- `lib/features/game/presentation/play_screen.dart` - 남은 시간 계산 및 게임 종료 조건 로직 수정
+- `lib/features/game/presentation/prison_screen.dart` - 남은 시간 계산 로직 수정
+
+---
+
+### �🛠️ 앱바 통합 및 레이아웃 개선 (Unified AppBar & Layout Refinement)
+
+#### ✅ 주요 작업 및 성과
+- **통합 앱바 시스템 구축**
+    - `AppBarConfig`: `leading` 속성 추가로 화면별 커스텀 뒤로가기 동작 지원
+    - `MainShellWrapper` / `GameShellWrapper`: `appBarProvider`를 통한 중앙 집중식 앱바 관리
+    - `GoRouter` 기반 뒤로가기 버튼: `context.canPop()` / `context.pop()` 패턴 적용
+- **화면별 레이아웃 개선**
+    - `JoinGameScreen`: `TabBar`를 화면 본문에 직접 통합하여 앱바와 겹침 문제 해결
+    - `LobbyScreen`: 커스텀 `leading` 버튼으로 뒤로가기 시 나가기 확인 다이얼로그 표시 후 홈 이동
+    - `CreateGameScreen`: 로비 이동 시 `context.go` → `context.push`로 변경하여 네비게이션 스택 유지
+
+#### ✅ 버그 수정 및 안정성 강화
+- **컴파일 에러 해결**
+    - `LobbyScreen`: `NdefRecord`, `TypeNameFormat` 임포트 누락 수정 (`nfc_manager/ndef_record.dart`)
+    - `PrisonScreen`: NFC `pollingOptions` 필수 파라미터 추가
+    - `Share` API: deprecated `shareWithResult` → `share` 복원
+    - `NdefMessage` / `ndef.write`: 명명된 파라미터 형식 수정 (`records:`, `message:`)
+- **비동기 갭 안전성 강화**
+    - NFC 콜백 내 `Navigator` 및 `ScaffoldMessenger`를 미리 캡처하여 `mounted` 체크 후 안전하게 사용
+    - `_handleExit()`: 다이얼로그 표시 전 `mounted` 체크 및 `rootNavigator` 캡처로 위젯 언마운트 오류 방지
+
+#### 📝 비고 / 특이사항
+- **린트 상태**: `flutter analyze` 기준 에러/경고 0건. 남은 이슈는 `info` 레벨(deprecated API 권고, 비동기 갭 린트)로 앱 동작에 영향 없음
+- **아키텍처 개선**: `extendBodyBehindAppBar: true` 환경에서 각 화면이 `MediaQuery.of(context).padding.top + kToolbarHeight`로 정확한 상단 여백을 계산하도록 통일
+
+#### 🔗 관련 파일
+- `lib/core/router/main_shell_wrapper.dart` - 통합 앱바 및 뒤로가기 버튼
+- `lib/core/router/game_shell_wrapper.dart` - 게임 화면용 쉘 래퍼
+- `lib/core/providers/app_bar_provider.dart` - `leading` 속성 추가
+- `lib/features/game/presentation/lobby_screen.dart` - 커스텀 뒤로가기, NFC API 수정
+- `lib/features/game/presentation/join_game_screen.dart` - TabBar 통합, 레이아웃 수정
+- `lib/features/game/presentation/prison_screen.dart` - NFC 폴링 옵션 추가
+
+---
+
+### 🚀 앱바 타이틀 동적 업데이트 시스템 구축 (Dynamic AppBar Title Management)
+
+#### ✅ 주요 작업 및 성과
+- **RouteAware 기반 화면 전환 감지 시스템 구현**
+    - `app_router.dart`: 각 ShellRoute에 별도의 `RouteObserver` 인스턴스 생성
+        - `mainShellRouteObserverProvider`: Main Shell(Home, Create, Join, Lobby) 전용
+        - `gameShellRouteObserverProvider`: Game Shell(Play, Prison, QrScan) 전용
+    - 각 ShellRoute에 `observers` 파라미터로 해당 observer 등록
+- **화면별 RouteAware mixin 적용**
+    - `HomeScreen`, `CreateGameScreen`, `JoinGameScreen`에 `RouteAware` mixin 적용
+    - `didChangeDependencies()`: RouteObserver 구독 설정
+    - `didPopNext()`: 다른 화면에서 돌아올 때 앱바 업데이트
+    - `dispose()`: RouteObserver 구독 해제
+- **Riverpod Provider 빌드 중 수정 오류 해결**
+    - `didPopNext()`에서 직접 provider 수정 시 "Tried to modify a provider while the widget tree was building" 에러 발생
+    - 해결: `WidgetsBinding.instance.addPostFrameCallback()`으로 감싸서 빌드 완료 후 실행되도록 수정
+- **앱바 설정 로직 `initState()`로 이동**
+    - 기존 `build()` 내 `addPostFrameCallback` 호출을 `initState()`로 이동
+    - 화면 최초 생성 시 한 번만 앱바 설정, 복귀 시에는 `didPopNext()`에서 처리
+
+#### 📝 비고 / 특이사항
+- **RouteObserver 중복 등록 에러**: 동일한 `RouteObserver` 인스턴스를 여러 Navigator(root, shell)에 등록할 수 없어 에러 발생. 각 Shell에 별도의 observer 인스턴스를 생성하여 해결.
+- **ShellRoute 내부 push/pop 감지**: root Navigator의 observer는 ShellRoute 내부의 화면 전환을 감지하지 못함. ShellRoute의 `observers` 파라미터에 등록해야 내부 이동 감지 가능.
+- **코드 패턴 정립**: 화면 전환 시 앱바 업데이트를 위한 정석적인 Flutter 패턴(RouteAware + addPostFrameCallback) 적용
+
+#### 🔗 관련 파일
+- `lib/core/router/app_router.dart` - RouteObserver 프로바이더 및 ShellRoute observers 설정
+- `lib/features/home/home_screen.dart` - RouteAware mixin 적용
+- `lib/features/game/presentation/create_game_screen.dart` - RouteAware mixin 적용
+- `lib/features/game/presentation/join_game_screen.dart` - RouteAware mixin 적용
+
+## 2026-01-12 (월)
+
+### 🚀 UX 개선: 프로필 아바타 랜덤 생성 및 시각적 고도화 (Avatar Randomization & Visual Polish)
+
+#### ✅ 주요 작업 및 성과
+- **아바타 랜덤 생성 시스템 구축**
+    - `OnboardingScreen`: 4종의 캐릭터 이미지(`profile1~4.png`) 중 하나를 무작위로 선택하는 로직 구현
+    - `dart:math`의 `Random` 클래스를 활용하여 버튼 클릭 시 현재와 다른 이미지가 선택되도록 정밀도 향상
+    - 초기 진입 시 항상 `profile1.png`가 표시되도록 요구사항 반영
+- **아바타 시각적 완성도 향상**
+    - `GlassAvatar`, `HomeProfileCard`: 글래스모피즘 원형 프레임 내에 아바타가 꽉 차게 표시되도록 `BoxFit.cover` 적용
+    - 이미지 로딩 오류 발생 시 펄백(Fallback) 아이콘(👤)을 표시하여 앱의 안정성 및 시인성 확보
+- **정적 분석 및 코드 건강도 개선**
+    - `flutter analyze` 수행 후 발견된 미사용 임포트(`uuid.dart`) 및 중복 명명된 인자(`alignment`) 제거
+    - `UserModel` 내 기존 `avatarSeed` 필드를 적극 활용하여 설정값이 유실되지 않도록 연동
+
+#### 📝 비고 / 특이사항
+- **디자인 일관성**: 온보딩 단계에서 선택한 아바타가 홈 화면의 프로필 카드에 즉시 반영되어 개인화된 사용자 경험(UX) 제공
+- **안정성**: `Image.asset`의 `errorBuilder`를 사용하여 에셋 누락 상황에서도 사용자 인터페이스가 무너지지 않도록 설계
+
+#### 🔗 관련 문서
+- [walkthrough.md](C:\Users\voll1\.gemini\antigravity\brain\e3b6e15b-0b73-42eb-bc88-26eb34bf2cbc\walkthrough.md)
+
+---
+
+### 🚀 UX 개선: 게임 생성 화면 인원 선택 방식 고도화 (Create Game Spinner & Touch Area Expansion)
+
+#### ✅ 주요 작업 및 성과
+- **인원 선택용 스피너(CupertinoPicker) 도입**
+    - `CreateGameScreen`: 경찰 및 도둑 인원 숫자를 클릭하면 하단 바텀 시트에 iOS 스타일의 `CupertinoPicker`가 나타나 1~99 사이의 숫자를 직관적으로 선택할 수 있도록 개선
+- **위젯 확장성 강화**
+    - `ParticipantCounter`: 숫자를 클릭할 수 있는 `onCountPressed` 콜백 필드 추가 및 `GestureDetector` 구현
+- **터치 영역 및 UX 최적화**
+    - 모바일 환경의 조작 편의성을 위해 숫자 양옆의 빈 공간(버튼 이전까지)을 모두 터치 영역으로 확장 (`Expanded` 및 `HitTestBehavior.opaque` 활용)
+    - 기존의 +, - 버튼 방식과 스피너 선택 방식을 병행 제공하여 사용자 선택폭 확대
+
+#### 📝 비고 / 특이사항
+- **조작성 향상**: 작은 숫자를 직접 터치하기 어려운 환경을 고려하여 터치 영역을 최대화함으로써 오동작 줄이고 사용성 개선
+- **디자인 일관성**: HUD 테마에 어울리는 어두운 배경의 바텀 시트와 민트색 '확인' 버튼을 사용하여 시디컬 미학 유지
+
+#### 🔗 관련 문서
+- 수정 파일:
+    - `lib/core/widgets/counter_button.dart` - `ParticipantCounter` 터치 영역 확장 및 콜백 추가
+    - `lib/features/game/presentation/create_game_screen.dart` - `CupertinoPicker` 기반 선택 로직 구현
+
+---
+
+## 2026-01-11 (일)
+
+### 🧹 코드 품질 개선: 위젯 분리 및 HUD 공통화 (Widget Separation & HUD Standardization)
+
+#### ✅ 주요 작업 및 성과
+- **공통 위젯 시스템 구축**
+    - `lib/core/widgets/stat_item.dart`: 통계 표시용 범용 위젯 추출 및 파라미터 표준화 (`color` -> `valueColor`)
+    - `lib/core/widgets/hud_dialog.dart`: 앱 전반의 다이얼로그 디자인 통일을 위한 `HudDialog` 구현 및 `static show()` 메서드 제공
+    - `lib/core/widgets/glass_container.dart`: 외부 레이아웃 제어를 위한 `margin` 파라미터 추가
+- **화면별 위젯 분리 및 리팩토링**
+    - `home_screen.dart`: `HomeProfileCard` 추출
+    - `lobby_screen.dart`: `LobbyGameCodeCard`, `LobbyParticipantTile` 추출
+    - `play_screen.dart`: `MyQrDialogContent` (`play_widgets.dart`) 추출
+    - `result_screen.dart`: `ResultTitleCard`, `ResultRankingItem` (`result_widgets.dart`) 추출
+    - **결과**: 모든 화면(`Home`, `Lobby`, `Play`, `Prison`, `Result`, `Join`)이 통일된 `HudDialog` 및 분리된 위젯을 사용하도록 구조 개선
+- **다이얼로그 시스템 전면 교체**
+    - 기존의 복잡하고 중복된 `showGeneralDialog` 호출을 `HudDialog.show()`로 대체하여 가독성 향상 및 디자인 일관성 확보
+
+#### 📝 비고 / 특이사항
+- **디자인 시스템 일관성**: 모든 알림과 확인 창이 동일한 글래스모피즘 HUD 테마를 따르게 되어 사용자 인터페이스의 전문성 향상
+- **유지보수성**: 각 화면 파일의 크기가 대폭 줄어들었으며(최대 30% 이상), UI 컴포넌트 수정 시 관련 위젯 파일만 수정하면 모든 화면에 반영됨
+
+#### 🔗 관련 문서
+- `C:\Users\voll1\.gemini\antigravity\brain\215809b8-4b98-4af3-baba-c726fb4ee2a8\walkthrough.md`
+
+---
+
+### 🧹 코드 품질 개선: 린트 오류 수정 및 비동기 처리 표준화 (Lint Fix & BuildContext Standardization)
+
+#### ✅ 주요 작업 및 성과
+- **프로젝트 전수 린트 정화**
+    - `flutter analyze` 결과 확인된 모든 오류 및 경고 해결
+    - 미사용 임포트(`qr_flutter`, `go_router`) 제거 및 누락된 임포트 보충
+    - 정확한 파라미터 매핑을 통해 정의되지 않은 명명된 파라미터 오류 해결
+- **비동기 BuildContext 안전 처리 표준화**
+    - `use_build_context_synchronously` 경고를 방지하기 위한 전수 보안 패치
+    - **주요 수정 패턴**:
+        - `await` 이전에 `Navigator.of(context)` 또는 `ScaffoldMessenger.of(context)`를 변수에 캡처하여 사용
+        - 비동기 작업 후 반드시 `if (mounted)` 또는 `if (context.mounted)` 체크 수행
+    - **적용 대상**: `LobbyScreen`, `QrScanScreen`, `PrisonScreen`, `JoinGameScreen` 등 비즈니스 로직이 밀집된 모든 화면
+- **최종 검증**
+    - `flutter analyze` 실행 결과 **No issues found!** 상태 달성 및 유지
+
+#### 📝 비고 / 특이사항
+- **런타임 안정성**: 비동기 작업 중 화면이 닫히는 예외 상황에서도 앱이 비정상적으로 종료되지 않도록 방어 로직 강화
+- **코드 품질**: 단순 수정을 넘어 전체 코드베이스에 걸쳐 일관된 비동기 처리 패턴을 확립함
+
+#### 🔗 관련 문서
+- `C:\Users\voll1\.gemini\antigravity\brain\215809b8-4b98-4af3-baba-c726fb4ee2a8\walkthrough.md`
+
+---
+
+### 🚀 기능 추가 및 UX 개선: 참여자 강퇴 및 로비 보직 변경 (Kick Participant & Lobby UX)
+
+#### ✅ 주요 작업 및 성과
+- **참여자 강퇴(Kick) 기능 구현**
+    - `GameRepository.kickParticipant()`: 특정 참여자를 게임에서 제거하는 트랜잭션 로직 추가
+    - `LobbyScreen`: 방장이 참여자 클릭 시 나타나는 관리 메뉴에 "강퇴하기" 옵션 추가
+    - **강퇴 알림 시스템**: 
+        - 강퇴당한 유저가 자동으로 홈 화면으로 이동하며 안내 다이얼로그를 받도록 구현
+        - `HomeScreen`에서 `isKicked` 파라미터를 감지하여 신뢰성 있는 알림 표시 (`didUpdateWidget` 활용)
+- **로비 UX 스트림라인 (방장 본인 보직 변경)**
+    - **기존 문제**: 방장이 본인 보직을 변경하려면 불필요한 중간 메뉴를 거쳐야 했음
+    - **개선**: `LobbyScreen`에서 방장이 본인 프로필 클릭 시 즉시 역할 변경 바텀시트가 노출되도록 직관적으로 변경
+- **코드 품질 및 UI 안정화**
+    - `HomeScreen`: 중복 정의된 로컬 위젯(`_HudText`, `_SciFiButton`)을 제거하고 공통 위젯(`HudText`, `SciFiButton`)으로 통합
+    - `HomeScreen`: 누락되었던 `dart:ui` 임포트를 복구하여 `ImageFilter` 오류 해결
+    - `LobbyScreen`: 스트림 구독(`StreamSubscription`) 방식을 도입하여 강퇴 여부를 실시간으로 더욱 견고하게 감시
+
+#### 📝 비고 / 특이사항
+- **강퇴 로직의 안정성**: 단순 팝업이 아니라 리포지토리 레이어에서 데이터를 삭제하고, 클라이언트가 이를 감지하여 정중하게 퇴장시키는 프로세스를 구축함
+- **UI 일관성**: 홈 화면의 레거시 위젯들을 공통 위젯으로 교체함으로써 앱 전반의 디자인 시스템 일관성 확보
+- **버그 해결**: `GoRouterState`의 비정상적인 상태 읽기로 인해 강퇴 알림이 안 뜨던 이슈를 `GoRouter` 파라미터와 생성자 주입 방식으로 개선하여 해결
+
+#### 🔗 관련 문서
+- 수정 파일:
+    - `lib/features/game/presentation/lobby_screen.dart` - 강퇴 메뉴 및 본인 역할 변경 로직
+    - `lib/features/game/data/game_repository.dart` - 강퇴 트랜잭션 구현
+    - `lib/features/home/home_screen.dart` - 위젯 통합 및 강퇴 알림 처리
+    - `lib/core/router/app_router.dart` - 강퇴 파라미터 라우팅 설정
+
+---
+
+
+### ⚖️ 게임 밸런스 개선: 열쇠 사용 점수 차감 구현 (Prison Key Score Penalty)
+
+#### ✅ 주요 작업 및 성과
+- **열쇠 사용 시 점수 차감 기능 구현**
+    - `GameRepository.usePrisonKey()`: 탈출 열쇠 사용 시 참가자 점수에서 **70점 차감** 로직 추가
+    - **밸런스 근거**:
+        - 체포 점수(100점)의 70%로 설정하여 열쇠의 강력한 역전 효과에 적절한 패널티 부여
+        - 구출 점수(50점)보다 높게 설정하여 동료 없이 혼자 탈출하는 것의 비용 반영
+        - 5분간 구출 불가 페널티와 함께 작용하여 전략적 선택지로 유지
+- **점수 시스템 문서화**
+    - `docs/plan.md`: 점수 시스템 섹션에 구체적인 수치 명시
+        - 경찰 체포: 100점
+        - 도둑 구출: 50점
+        - 도둑 생존: 1초당 1점
+        - 열쇠 사용: -70점
+
+#### 📝 비고 / 특이사항
+- **게임 밸런스 고려사항**:
+    - 현재 점수 시스템에서 도둑의 생존 점수가 빠르게 누적되는 문제가 있어 열쇠 사용에 적절한 패널티 부여가 중요
+    - 70점 차감은 2분 이상 잡혀 있었던 도둑에게는 합리적인 선택이 될 수 있음
+    - 향후 플레이 테스트를 통해 적절성 검증 필요 (50~100점 범위에서 조정 가능)
+- **향후 개선 방향**:
+    - 전반적인 점수 밸런스 재조정 필요 (경찰 체포 점수를 플레이 시간에 비례하여 증가시키는 방안 검토)
+
+#### 🔗 관련 문서
+- 수정 파일:
+    - `lib/features/game/data/game_repository.dart` - 열쇠 사용 시 점수 차감 로직 추가
+    - `docs/plan.md` - 점수 시스템 구체화
+
+---
+
+### 🐛 버그 수정: 감옥 화면 게임 종료 처리 (Prison Screen Game End Handling)
+
+#### ✅ 주요 작업 및 성과
+- **문제 해결**
+    - **문제 현상**: 도둑이 수감되어 감옥 화면(`PrisonScreen`)에 있을 때 게임이 종료되어도 결과 화면으로 이동하지 않음
+    - **추가 문제**: 감옥 화면에서 게임 남은 시간이 표시되지 않아 게임 진행 상황 파악 불가
+- **타이머 시스템 구현**
+    - `PlayScreen`과 동일한 타이머 로직을 `PrisonScreen`에 적용
+    - **서버 시간 동기화**: `_initServerTimeOffset()`으로 서버 시간과 로컬 시간의 offset 계산
+    - **주기적 업데이트**: `Timer.periodic`을 사용하여 1초마다 화면 갱신
+    - **시간 계산**: 서버 시간 기준으로 정확한 남은 시간 계산 및 표시
+- **게임 종료 감지 및 자동 네비게이션**
+    - 게임 상태(`game.status`)를 실시간으로 감시하여 `GameStatus.finished` 감지
+    - 종료 감지 시 `context.go('/result/${gameId}')`로 결과 화면으로 자동 이동
+    - `WidgetsBinding.instance.addPostFrameCallback`을 사용하여 빌드 사이클 중 안전한 네비게이션 보장
+- **UI 개선**
+    - 화면 상단에 타이머 섹션 추가 (`GlassContainer` 스타일)
+    - 레드 네온 테마로 48pt 크기의 남은 시간 표시
+    - MM:SS 형식의 `_formatDuration()` 메서드로 가독성 향상
+
+#### 📝 비고 / 특이사항
+- **코드 일관성**: `PlayScreen`과 완전히 동일한 타이머 및 서버 시간 동기화 로직 적용하여 일관성 유지
+- **리소스 관리**: `dispose()` 메서드에서 타이머를 올바르게 정리하여 메모리 누수 방지
+- **안전한 비동기 처리**: 모든 비동기 작업에서 `mounted` 체크를 통해 위젯 unmounted 상태 오류 방지
+- **UI/UX**: 감옥 화면에서도 게임 진행 상황을 실시간으로 파악할 수 있어 사용자 경험 개선
+
+#### 🔗 관련 문서
+- 수정 파일:
+    - `lib/features/game/presentation/prison_screen.dart` - 타이머 로직, 게임 종료 처리, UI 추가
+
+---
+
+### 🐛 버그 수정: 타이머 동기화 문제 해결 (Timer Synchronization Fix)
+
+#### ✅ 주요 작업 및 성과
+- **문제 원인 분석 및 해결**
+    - **문제 현상**: 실제 기기 3대 테스트 중 방장과 참여자 간 타이머가 다르게 표시되는 현상 발견
+        - 방장(갤럭시 S23): 5분부터 정상 카운트다운
+        - 참여자 기기 1: 13분부터 시작
+        - 참여자 기기 2: 5분 몇초부터 시작
+    - **근본 원인**: `PlayScreen`에서 각 기기의 로컬 시스템 시간(`DateTime.now()`)을 사용하여 남은 시간 계산
+        - 기기마다 시스템 시간 설정이 다르면 타이머가 다르게 표시됨
+        - 방장이 게임 시작 시 자신의 로컬 시간 기준으로 `endsAt` 계산
+- **Firestore 서버 타임스탬프 기반 Offset 계산 구현**
+    - `GameRepository.calculateServerTimeOffset()`: 서버 시간과 로컬 시간의 차이(offset) 계산
+        - Firestore `_timesync` 컬렉션에 더미 문서 작성하여 서버 타임스탬프 획득
+        - 네트워크 왕복 시간(RTT)의 절반을 보정하여 정확도 향상
+        - offset = 서버 시간 - 로컬 시간
+    - `GameRepository.getEstimatedServerTime()`: offset을 적용한 추정 서버 시간 반환
+    - `PlayScreen`: 화면 진입 시 offset 초기화 및 서버 시간 기준으로 남은 시간 계산
+        - `_remainingTime = game.endsAt!.difference(estimatedServerTime)`
+- **견고한 예외 처리 구현**
+    - **타임아웃 처리**: Firestore 작업에 5초 타임아웃 설정으로 네트워크 지연 환경 대응
+    - **리소스 정리**: `finally` 블록으로 더미 문서 삭제 보장 (삭제 실패 시에도 무시)
+    - **Fallback 전략**: 모든 예외 발생 시 `Duration.zero` 반환하여 로컬 시간 사용
+    - **타입 안전성**: `doc.data()`를 `Map<String, dynamic>?`로 명시적 캐스팅하여 null-safety 준수
+
+#### 📝 비고 / 특이사항
+- **기술적 결정**: 
+    - 서버 시간 offset은 `PlayScreen` 진입 시마다 계산 (Firestore 읽기/쓰기 1회 추가, 약 100-300ms)
+    - 향후 앱 최초 실행 시 한 번만 계산하고 전역으로 관리하는 방식으로 개선 가능
+    - 주기적 offset 갱신(예: 5분마다)도 고려 가능
+- **정확도**: 네트워크 왕복 시간 보정으로 일반적인 환경에서 ±100ms 이내의 정확도 예상
+- **안정성**: offset 계산 실패 시에도 앱이 정상 작동하도록 graceful fallback 구현
+- **검증**: `flutter analyze` 통과 (No issues found!)
+
+#### 🔗 관련 문서
+- 수정 파일:
+    - `lib/features/game/data/game_repository.dart` - offset 계산 메서드 추가
+    - `lib/features/game/presentation/play_screen.dart` - 서버 시간 기반 타이머 계산
+
+---
+
 ## 2026-01-10 (토)
 
 ### 🧹 코드 품질 개선: 공통 위젯 리팩토링 (Common Widget Refactoring)

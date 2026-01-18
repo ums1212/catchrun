@@ -2,14 +2,13 @@
 
 ## Backlog (추후)
 - 경찰 스캐너 아이템(근처 도둑 위치 힌트, 일회성/점수차감/쿨타임)
-- 아바타 프리셋 변경
 - 전적/랭킹/시즌
 - 감옥 위치(GPS/지오펜싱) 강제(현재 MVP는 UI/룰 기반)
 - 치팅 방지 강화(Cloud Functions authoritative server)
 - 장기 미사용(미완성 프로필) 유령 회원 자동 삭제 시스템 (@user_cleanup_design.md)
-- 게임 만들기(S-05) 인원 선택 UI 개선 (텍스트 클릭 시 스피너 위젯 노출)
-- 대기방(S-07) 방장의 참가자 강퇴(Kick) 기능
 - **NFC 고도화**: NFC 태그 시 앱 자동 실행(AAR) 및 미설치 시 마켓(Deep Link) 이동 기능
+- 스플래시스크린의 배경색 지정방법 확인
+- 보안 열쇠 중복 등록 시 이미 등록된 NFC 메시지 알림
 
 ## Sprint 0 — 프로젝트 세팅 (Foundation)
 ### 목표(DoD)
@@ -32,6 +31,7 @@
 - users/{uid} 생성/업데이트(닉네임, avatarSeed, timestamps)
 - 랜덤 닉네임 생성 로직 + “다시 뽑기/편집” UI(S-03)
 - 홈(S-04) 프로필 헤더(닉네임/아바타 표시)
+- [x] 아바타 랜덤 생성 및 프리셋 이미지(profile1~4) 연동
 - 로그아웃(디버그 메뉴로 숨겨도 OK)
 
 ## Sprint 2 — Firestore 스키마/규칙 + 게임 생성/참가(로비 입장)
@@ -58,11 +58,9 @@
 - 역할 자동 배정이 기본
 - “경찰 지원” 및 방장 Long-press로 역할 변경/고정 가능
 - 방장이 게임 시작 → 타이머 표시 → 종료 조건 적용
-### Tasks (역할)
-- 참가자 문서에 role, roleLock, wantsCop 반영
-- 자동 배정 알고리즘(인원/비율 반영)
-- ‘경찰 지원’ 토글 → wantsCop 저장
-- 방장 Long-press RoleChangeBottomSheet(경찰/도둑 변경 + 고정)
+- 방장 직접 지정 방식 역할 변경 (RoleChangeBottomSheet)
+- [x] 방장 본인 클릭 시 즉시 역할 변경 UX 개선 (중간 메뉴 제거)
+- [x] 대기방(S-07) 방장의 참여자 강퇴(Kick) 기능 추가 및 강퇴 알림 구현
 ### Tasks (게임 시작/타이머/종료)
 - 방장 “게임 시작”:
   - status=playing, startedAt, endsAt 세팅
@@ -114,6 +112,7 @@
   - games.counts 업데이트
   - events: KEY_USED (audience=cops)
 - 플레이 화면에서 events 구독 → EventPopupOverlay 구현
+- [x] 플레이 화면 및 결과 화면에 활동 로그 확인 버튼/다이얼로그 추가
 - 팝업 중복 방지(최근 eventId 캐시)
 
 ## Sprint 6 — 점수/결과/칭호 + 폴리싱

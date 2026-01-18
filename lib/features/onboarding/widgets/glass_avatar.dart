@@ -48,9 +48,17 @@ class GlassAvatar extends StatelessWidget {
                 ),
               ),
               alignment: Alignment.center,
-              child: const Text(
-                '👤',
-                style: TextStyle(fontSize: 48),
+              child: Image.asset(
+                'assets/image/profile$seed.png',
+                width: 120,
+                height: 120,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Text(
+                    '👤',
+                    style: TextStyle(fontSize: 48),
+                  );
+                },
               ),
             ),
           ),

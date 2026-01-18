@@ -1,9 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:catchrun/core/network/connectivity_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(FirebaseAuth.instance, GoogleSignIn());
+  return AuthRepository(
+    FirebaseAuth.instance,
+    GoogleSignIn(),
+    ref.watch(connectivityServiceProvider),
+  );
 });
 
 final authStateChangesProvider = StreamProvider<User?>((ref) {
@@ -13,14 +18,16 @@ final authStateChangesProvider = StreamProvider<User?>((ref) {
 class AuthRepository {
   final FirebaseAuth _auth;
   final GoogleSignIn _googleSignIn;
+  final ConnectivityService _connectivityService;
 
-  AuthRepository(this._auth, this._googleSignIn);
+  AuthRepository(this._auth, this._googleSignIn, this._connectivityService);
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   User? get currentUser => _auth.currentUser;
 
   Future<UserCredential?> signInWithGoogle() async {
+    await _connectivityService.ensureConnection();
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null;
@@ -38,6 +45,7 @@ class AuthRepository {
   }
 
   Future<UserCredential?> signInAnonymously() async {
+    await _connectivityService.ensureConnection();
     try {
       return await _auth.signInAnonymously();
     } catch (e) {
@@ -46,7 +54,17 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
+    await _connectivityService.ensureConnection();
     await _googleSignIn.signOut();
     await _auth.signOut();
+  }
+
+  /// 익명 계정을 사용하는 경우에만 삭제하는 용도로 사용
+  Future<void> deleteAnonymousUser() async {
+    await _connectivityService.ensureConnection();
+    final user = _auth.currentUser;
+    if (user != null && user.isAnonymous) {
+      await user.delete();
+    }
   }
 }

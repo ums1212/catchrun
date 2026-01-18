@@ -2,6 +2,7 @@ import 'package:catchrun/core/auth/auth_repository.dart';
 import 'package:catchrun/core/models/user_model.dart';
 import 'package:catchrun/core/user/user_repository.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:catchrun/core/network/network_error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // 현재 인증된 사용자의 Firestore 정보를 가져오는 프로바이더
@@ -29,22 +30,26 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
   Future<void> signInWithGoogle() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final credential = await _authRepository.signInWithGoogle();
-      
-      if (credential != null && credential.user != null) {
-        await _handleUserSignIn(credential.user!);
-      }
+      return await NetworkErrorHandler.wrap(() async {
+        final credential = await _authRepository.signInWithGoogle();
+        
+        if (credential != null && credential.user != null) {
+          await _handleUserSignIn(credential.user!);
+        }
+      });
     });
   }
 
   Future<void> signInAnonymously() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final credential = await _authRepository.signInAnonymously();
-      
-      if (credential != null && credential.user != null) {
-        await _handleUserSignIn(credential.user!);
-      }
+      return await NetworkErrorHandler.wrap(() async {
+        final credential = await _authRepository.signInAnonymously();
+        
+        if (credential != null && credential.user != null) {
+          await _handleUserSignIn(credential.user!);
+        }
+      });
     });
   }
 
@@ -62,8 +67,23 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
 
 
   Future<void> signOut() async {
+    final currentUser = _authRepository.currentUser;
+    if (currentUser == null) return;
+
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _authRepository.signOut());
+    state = await AsyncValue.guard(() async {
+      await NetworkErrorHandler.wrap(() async {
+        if (currentUser.isAnonymous) {
+          // 익명 계정인 경우 계정 먼저 삭제 (리다이렉션이 /login으로 향하도록)
+          final uid = currentUser.uid;
+          await _authRepository.deleteAnonymousUser();
+          await _userRepository.deleteAnonymousUser(uid);
+        } else {
+          // 일반 계정인 경우 로그아웃만 수행
+          await _authRepository.signOut();
+        }
+      });
+    });
   }
 
   Future<void> completeProfile(String nickname, String avatarSeed) async {
@@ -75,17 +95,22 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
 
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final user = await _userRepository.getUser(currentUser.uid);
-      if (user != null) {
-        final updatedUser = user.copyWith(
-          nickname: nickname,
-          avatarSeed: avatarSeed,
-        );
-        await _userRepository.updateUser(updatedUser);
-      } else {
-        throw Exception('사용자 정보를 찾을 수 없습니다.');
-      }
+      await NetworkErrorHandler.wrap(() async {
+        final user = await _userRepository.getUser(currentUser.uid);
+        if (user != null) {
+          final updatedUser = user.copyWith(
+            nickname: nickname,
+            avatarSeed: avatarSeed,
+          );
+          await _userRepository.updateUser(updatedUser);
+        } else {
+          throw Exception('사용자 정보를 찾을 수 없습니다.');
+        }
+      });
     });
   }
 
+  Future<void> cancelRegistration() async {
+    await signOut();
+  }
 }

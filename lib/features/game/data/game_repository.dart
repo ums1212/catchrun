@@ -1,16 +1,22 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:catchrun/core/models/game_model.dart';
 import 'package:catchrun/core/models/participant_model.dart';
 import 'package:catchrun/core/models/user_model.dart';
+import 'package:catchrun/core/network/connectivity_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final gameRepositoryProvider = Provider((ref) => GameRepository(FirebaseFirestore.instance));
+final gameRepositoryProvider = Provider((ref) => GameRepository(
+  FirebaseFirestore.instance,
+  ref.watch(connectivityServiceProvider),
+));
 
 class GameRepository {
   final FirebaseFirestore _firestore;
+  final ConnectivityService _connectivityService;
 
-  GameRepository(this._firestore);
+  GameRepository(this._firestore, this._connectivityService);
 
   // 게임 생성
   Future<String> createGame({
@@ -19,6 +25,7 @@ class GameRepository {
     required AppUser host,
     int durationSec = 600,
   }) async {
+    await _connectivityService.ensureConnection();
 
     final gameId = _firestore.collection('games').doc().id;
     final gameCode = _generateRandomCode(9);
@@ -87,6 +94,7 @@ class GameRepository {
     required String inviteCode,
     required AppUser user,
   }) async {
+    await _connectivityService.ensureConnection();
     // 1. gameCode로 gameId 조회
     final codeDoc = await _firestore.collection('gameCodes').doc(gameCode).get();
     if (!codeDoc.exists) {
@@ -160,6 +168,7 @@ class GameRepository {
     required String qrToken,
     required AppUser user,
   }) async {
+    await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
       final gameDoc = await transaction.get(_firestore.collection('games').doc(gameId));
       if (!gameDoc.exists) throw Exception('게임을 찾을 수 없습니다.');
@@ -167,6 +176,65 @@ class GameRepository {
       final gameData = gameDoc.data()!;
       if (gameData['joinQrToken'] != qrToken) {
         throw Exception('유효하지 않은 QR 코드입니다.');
+      }
+
+      if (gameData['status'] != 'lobby') {
+        throw Exception('이미 시작되었거나 종료된 게임입니다.');
+      }
+
+      final participantRef = _firestore
+          .collection('games')
+          .doc(gameId)
+          .collection('participants')
+          .doc(user.uid);
+      
+      final participantDoc = await transaction.get(participantRef);
+      if (participantDoc.exists) return;
+
+      final participant = ParticipantModel(
+        uid: user.uid,
+        nicknameSnapshot: user.nickname ?? '익명',
+        avatarSeedSnapshot: user.avatarSeed,
+        joinedAt: DateTime.now(),
+        stats: ParticipantStats(),
+      );
+
+      transaction.set(participantRef, participant.toMap());
+      transaction.update(_firestore.collection('games').doc(gameId), {
+        'counts.total': FieldValue.increment(1),
+      });
+
+      // 입장 이벤트 기록
+      final eventRef = _firestore.collection('games').doc(gameId).collection('events').doc();
+      transaction.set(eventRef, {
+        'type': 'PLAYER_JOINED',
+        'createdAt': FieldValue.serverTimestamp(),
+        'actorUid': user.uid,
+        'audience': 'all',
+        'payload': {
+          'nickname': user.nickname ?? '익명',
+          'message': '${user.nickname ?? '익명'}님이 입장했습니다.',
+        },
+      });
+    });
+
+    return gameId;
+  }
+
+  // 게임 참가 (NFC 열쇠로 참가 - Deep Link)
+  Future<String> joinGameByNfcKey({
+    required String gameId,
+    required String nfcKeyId,
+    required AppUser user,
+  }) async {
+    await _connectivityService.ensureConnection();
+    await _firestore.runTransaction((transaction) async {
+      final gameDoc = await transaction.get(_firestore.collection('games').doc(gameId));
+      if (!gameDoc.exists) throw Exception('게임을 찾을 수 없습니다.');
+
+      final gameData = gameDoc.data()!;
+      if (gameData['keyItem']['nfcKeyId'] != nfcKeyId) {
+        throw Exception('유효하지 않은 보안 열쇠입니다.');
       }
 
       if (gameData['status'] != 'lobby') {
@@ -241,6 +309,7 @@ class GameRepository {
 
   // 게임 시작
   Future<void> startGame(String gameId) async {
+    await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
       final gameRef = _firestore.collection('games').doc(gameId);
       final gameDoc = await transaction.get(gameRef);
@@ -302,6 +371,7 @@ class GameRepository {
     required DocumentReference gameRef,
     required Map<String, dynamic> gameData,
     required DateTime now,
+    Duration serverTimeOffset = Duration.zero,
   }) async {
     // 1. 모든 참가자 정보를 가져와서 승리 판정 및 점수 정산
     final participantsSnapshot = await gameRef.collection('participants').get();
@@ -322,7 +392,7 @@ class GameRepository {
         int addedSurvivalSec = 0;
         if (p.state == RobberState.free) {
           final lastChanged = p.lastStateChangedAt ?? (gameData['startedAt'] as Timestamp?)?.toDate() ?? now;
-          addedSurvivalSec = now.difference(lastChanged).inSeconds;
+          addedSurvivalSec = max(0, now.difference(lastChanged).inSeconds);
         }
         
         final finalSurvivalSec = p.stats.survivalSec + addedSurvivalSec;
@@ -360,22 +430,42 @@ class GameRepository {
 
 
   // 게임 종료
-  Future<void> finishGame(String gameId) async {
-    await _firestore.runTransaction((transaction) async {
-      final gameRef = _firestore.collection('games').doc(gameId);
-      final gameDoc = await transaction.get(gameRef);
-      if (!gameDoc.exists) return;
+  // 게임 종료 (분산 검증 대응: 누구나 호출 가능하지만 최초 1인만 성공)
+  Future<void> finishGame(String gameId, {Duration serverTimeOffset = Duration.zero}) async {
+    await _connectivityService.ensureConnection();
+    
+    // 1. [First-order Check] 트랜잭션 진입 전 상태를 먼저 체크하여 불필요한 부하 방지
+    final gameDocBefore = await _firestore.collection('games').doc(gameId).get();
+    if (!gameDocBefore.exists || gameDocBefore.data()?['status'] != 'playing') {
+      return;
+    }
 
-      final gameData = gameDoc.data()!;
-      if (gameData['status'] != 'playing') return;
+    try {
+      await _firestore.runTransaction((transaction) async {
+        final gameRef = _firestore.collection('games').doc(gameId);
+        final gameDoc = await transaction.get(gameRef);
+        if (!gameDoc.exists) return;
 
-      await _finishGameInternal(
-        transaction: transaction,
-        gameRef: gameRef,
-        gameData: gameData,
-        now: DateTime.now(),
-      );
-    });
+        final gameData = gameDoc.data()!;
+        
+        // 2. [Atomic Verifier] 트랜잭션 내에서 원자적으로 상태 재호출 및 검증 (멱등성 보장)
+        if (gameData['status'] != 'playing') return;
+
+        await _finishGameInternal(
+          transaction: transaction,
+          gameRef: gameRef,
+          gameData: gameData,
+          now: getEstimatedServerTime(serverTimeOffset),
+          serverTimeOffset: serverTimeOffset,
+        );
+      });
+    } catch (e) {
+      // 다른 클라이언트가 동시에 성공하여 충돌이 발생한 경우 조용히 리턴
+      if (e.toString().contains('ABORTED') || e.toString().contains('failed-precondition')) {
+        return;
+      }
+      rethrow;
+    }
   }
 
 
@@ -384,6 +474,7 @@ class GameRepository {
     required String gameId,
     required String uid,
   }) async {
+    await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
       final gameRef = _firestore.collection('games').doc(gameId);
       final participantRef = gameRef.collection('participants').doc(uid);
@@ -432,12 +523,57 @@ class GameRepository {
     });
   }
 
+  // 강퇴하기
+  Future<void> kickParticipant({
+    required String gameId,
+    required String uid,
+  }) async {
+    await _connectivityService.ensureConnection();
+    await _firestore.runTransaction((transaction) async {
+      final gameRef = _firestore.collection('games').doc(gameId);
+      final participantRef = gameRef.collection('participants').doc(uid);
+
+      final gameDoc = await transaction.get(gameRef);
+      if (!gameDoc.exists) return;
+
+      final participantDoc = await transaction.get(participantRef);
+      if (!participantDoc.exists) return;
+
+      final participantData = participantDoc.data()!;
+      final nickname = participantData['nicknameSnapshot'] ?? '익명';
+
+      // 1. 참가자 삭제
+      transaction.delete(participantRef);
+
+      // 2. 인원수 업데이트
+      transaction.update(gameRef, {
+        'counts.total': FieldValue.increment(-1),
+      });
+
+      // 3. 강퇴 이벤트 기록
+      final eventRef = gameRef.collection('events').doc();
+      transaction.set(eventRef, {
+        'type': 'PLAYER_KICKED',
+        'createdAt': FieldValue.serverTimestamp(),
+        'actorUid': gameDoc.data()?['hostUid'],
+        'targetUid': uid,
+        'audience': 'all',
+        'payload': {
+          'nickname': nickname,
+          'message': '$nickname님이 방장에 의해 강퇴되었습니다.',
+        },
+      });
+    });
+  }
+
   // 체포하기
   Future<void> catchRobber({
     required String gameId,
     required String copUid,
     required String robberUid,
+    Duration serverTimeOffset = Duration.zero,
   }) async {
+    await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
       final gameRef = _firestore.collection('games').doc(gameId);
       final copRef = gameRef.collection('participants').doc(copUid);
@@ -458,9 +594,9 @@ class GameRepository {
       }
 
 
-      final now = DateTime.now();
+      final now = getEstimatedServerTime(serverTimeOffset);
       final lastChanged = robberData.lastStateChangedAt ?? (gameDoc.data()!['startedAt'] as Timestamp?)?.toDate() ?? now;
-      final addedSurvivalSec = now.difference(lastChanged).inSeconds;
+      final addedSurvivalSec = max(0, now.difference(lastChanged).inSeconds);
 
       // 1. 도둑 상태 업데이트
       transaction.update(robberRef, {
@@ -515,6 +651,7 @@ class GameRepository {
           gameRef: gameRef,
           gameData: updatedGameData,
           now: now,
+          serverTimeOffset: serverTimeOffset,
         );
       }
     });
@@ -527,6 +664,7 @@ class GameRepository {
     required String rescuerUid,
     required String jailedUid,
   }) async {
+    await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
       final gameRef = _firestore.collection('games').doc(gameId);
       final rescuerRef = gameRef.collection('participants').doc(rescuerUid);
@@ -599,7 +737,9 @@ class GameRepository {
     required String gameId,
     required String uid,
     required String scannedId,
+    Duration serverTimeOffset = Duration.zero,
   }) async {
+    await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
       final gameRef = _firestore.collection('games').doc(gameId);
       final participantRef = gameRef.collection('participants').doc(uid);
@@ -620,16 +760,17 @@ class GameRepository {
         throw Exception('유효하지 않은 열쇠입니다.');
       }
 
-      final now = DateTime.now();
+      final now = getEstimatedServerTime(serverTimeOffset);
       final rescueDisabledUntil = now.add(const Duration(minutes: 5));
 
-      // 1. 도둑 상태 업데이트 (자유 상태 + 구출 제한)
+      // 1. 도둑 상태 업데이트 (자유 상태 + 구출 제한 + 점수 차감)
       transaction.update(participantRef, {
         'state': RobberState.free.name,
         'releasedAt': FieldValue.serverTimestamp(),
         'rescueDisabledUntil': Timestamp.fromDate(rescueDisabledUntil),
         'lastStateChangedAt': FieldValue.serverTimestamp(),
         'stats.keyUsed': true,
+        'score': FieldValue.increment(-70), // 열쇠 사용 점수 차감: -70
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
@@ -660,7 +801,7 @@ class GameRepository {
     });
   }
 
-  // 실시간 이벤트 감시 (팝업용)
+  // 실시간 이벤트 감시 (팝업용 - 최신 1개)
   Stream<Map<String, dynamic>?> watchLatestEvent(String gameId) {
     return _firestore
         .collection('games')
@@ -675,6 +816,21 @@ class GameRepository {
       data['id'] = snapshot.docs.first.id;
       return data;
     });
+  }
+
+  // 실시간 모든 이벤트 감시 (로그용)
+  Stream<List<Map<String, dynamic>>> watchAllEvents(String gameId) {
+    return _firestore
+        .collection('games')
+        .doc(gameId)
+        .collection('events')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList());
   }
 
   // 참가자 목록 스트림
@@ -696,5 +852,67 @@ class GameRepository {
     return String.fromCharCodes(Iterable.generate(
       length, (_) => chars.codeUnitAt(rnd.nextInt(chars.length)),
     ));
+  }
+
+  /// 서버 시간과 로컬 시간의 offset을 계산합니다.
+  /// 이를 통해 기기마다 다른 시스템 시간에도 동기화된 타이머를 구현할 수 있습니다.
+  Future<Duration> calculateServerTimeOffset() async {
+    DocumentReference? docRef;
+    
+    try {
+      await _connectivityService.ensureConnection();
+      final localBefore = DateTime.now();
+      
+      // Firestore에 더미 문서를 작성하여 서버 타임스탬프 획득
+      docRef = _firestore.collection('_timesync').doc();
+      
+      // 타임아웃 설정 (5초)
+      await docRef.set({
+        'createdAt': FieldValue.serverTimestamp(),
+      }).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException('Server time sync timeout'),
+      );
+      
+      // 작성된 문서를 읽어서 서버 타임스탬프 확인
+      final doc = await docRef.get().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException('Server time sync timeout'),
+      );
+      
+      final data = doc.data() as Map<String, dynamic>?;
+      final serverTime = (data?['createdAt'] as Timestamp?)?.toDate();
+      
+      if (serverTime == null) {
+        return Duration.zero;
+      }
+      
+      final localAfter = DateTime.now();
+      // 네트워크 왕복 시간의 절반을 보정
+      final estimatedLocalTime = localBefore.add(
+        Duration(milliseconds: localAfter.difference(localBefore).inMilliseconds ~/ 2)
+      );
+      
+      // offset = 서버 시간 - 로컬 시간
+      return serverTime.difference(estimatedLocalTime);
+    } catch (e) {
+      // 네트워크 오류, Firestore 접근 실패, 타임아웃 등의 경우
+      // Duration.zero를 반환하여 로컬 시간을 사용하도록 fallback
+      return Duration.zero;
+    } finally {
+      // 더미 문서 삭제 (실패해도 무시)
+      if (docRef != null) {
+        try {
+          await docRef.delete().timeout(const Duration(seconds: 3));
+        } catch (_) {
+          // 문서 삭제 실패는 무시 (자동으로 정리될 것임)
+        }
+      }
+    }
+  }
+
+  /// offset을 적용하여 현재 추정 서버 시간을 반환합니다.
+  DateTime getEstimatedServerTime(Duration offset) {
+    return DateTime.now().add(offset);
   }
 }

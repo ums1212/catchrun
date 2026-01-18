@@ -22,6 +22,8 @@ class AppTheme {
           ),
         ),
       ),
+      scaffoldBackgroundColor: Colors.black,
+      canvasColor: Colors.black,
     );
   }
 
@@ -39,6 +41,8 @@ class AppTheme {
           color: Colors.white,
         ),
       ),
+      scaffoldBackgroundColor: Colors.black,
+      canvasColor: Colors.black,
     );
   }
 }

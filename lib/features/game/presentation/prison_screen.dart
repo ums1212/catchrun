@@ -1,21 +1,27 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:nfc_manager/ndef_record.dart';
 import 'package:nfc_manager_ndef/nfc_manager_ndef.dart';
 import 'package:app_settings/app_settings.dart';
 import 'package:catchrun/core/models/game_model.dart';
 import 'package:catchrun/core/models/participant_model.dart';
 import 'package:catchrun/features/game/data/game_repository.dart';
+import 'package:catchrun/core/network/network_error_handler.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
+import 'package:catchrun/core/providers/app_bar_provider.dart';
 import 'package:catchrun/core/widgets/hud_text.dart';
 import 'package:catchrun/core/widgets/glass_container.dart';
 import 'package:catchrun/core/widgets/scifi_button.dart';
+import 'package:catchrun/core/widgets/stat_item.dart';
+import 'package:catchrun/core/widgets/hud_dialog.dart';
 
 class PrisonScreen extends ConsumerStatefulWidget {
   final String gameId;
-
   const PrisonScreen({super.key, required this.gameId});
 
   @override
@@ -24,105 +30,160 @@ class PrisonScreen extends ConsumerStatefulWidget {
 
 class _PrisonScreenState extends ConsumerState<PrisonScreen> {
   bool _isScanning = false;
+  Timer? _timer;
+  Duration _remainingTime = Duration.zero;
+  Duration _serverTimeOffset = Duration.zero;
+  bool _isDialogOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initServerTimeOffset();
+    _startTimer();
+    // AppBar 초기 설정
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(appBarProvider.notifier).state = const AppBarConfig(
+          title: '구금 상태 (PRISON)',
+          centerTitle: true,
+          titleColor: Colors.redAccent,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _initServerTimeOffset() async {
+    try {
+      final offset = await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).calculateServerTimeOffset());
+      if (mounted) setState(() => _serverTimeOffset = offset);
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      _checkEndConditions();
+      setState(() {});
+    });
+  }
+
+  void _checkEndConditions() {
+    final gameAsync = ref.read(gameRepositoryProvider).watchGame(widget.gameId);
+    gameAsync.first.then((game) {
+      if (game == null || game.status != GameStatus.playing) return;
+      
+      // startedAt + durationSec을 사용해 종료 시간 계산 (서버 시간 기준)
+      if (game.startedAt != null) {
+        final estimatedServerTime = DateTime.now().add(_serverTimeOffset);
+        final endsAt = game.startedAt!.add(Duration(seconds: game.durationSec));
+        
+        if (estimatedServerTime.isAfter(endsAt)) {
+          // [Smart Jitter] 모든 클라이언트가 동시에 요청하는 것을 방지하기 위해 랜덤 지연 추가
+          final randomDelay = (DateTime.now().millisecond % 3000); 
+          Future.delayed(Duration(milliseconds: randomDelay), () {
+            if (mounted) {
+              NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).finishGame(
+                game.id,
+                serverTimeOffset: _serverTimeOffset,
+              ));
+            }
+          });
+        }
+      }
+    });
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
 
   Future<void> _useNfcKey() async {
     final availability = await NfcManager.instance.checkAvailability();
-    
     if (availability != NfcAvailability.enabled) {
-      if (!mounted) return;
-
-      showGeneralDialog(
+    if (!mounted) return;
+    _isDialogOpen = true;
+    HudDialog.show(
         context: context,
-        barrierDismissible: true,
-        barrierLabel: 'NfcDisabledDialog',
-        pageBuilder: (context, _, __) => Center(
-          child: GlassContainer(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const HudText('NFC 비활성', fontSize: 18, color: Colors.redAccent),
-                const SizedBox(height: 16),
-                const HudText(
-                  'NFC 기능이 꺼져 있거나 지원되지 않습니다.\n시스템 설정에서 활성화해 주세요.',
-                  fontWeight: FontWeight.normal,
-                  fontSize: 12,
-                  color: Colors.white70,
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: SciFiButton(
-                        text: '취소',
-                        height: 45,
-                        fontSize: 14,
-                        isOutlined: true,
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: SciFiButton(
-                        text: '설정',
-                        height: 45,
-                        fontSize: 14,
-                        onPressed: () async {
-                          await AppSettings.openAppSettings(type: AppSettingsType.nfc);
-                          if (context.mounted) Navigator.pop(context);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+        title: 'NFC 비활성',
+        titleColor: Colors.redAccent,
+        contentText: 'NFC 기능이 꺼져 있거나 지원되지 않습니다.\n시스템 설정에서 활성화해 주세요.',
+        actions: [
+          SciFiButton(
+            text: '취소',
+            height: 45,
+            fontSize: 14,
+            isOutlined: true,
+            onPressed: () {
+              Navigator.of(context, rootNavigator: true).pop();
+              _isDialogOpen = false;
+            },
           ),
-        ),
-      );
+          SciFiButton(
+            text: '설정',
+            height: 45,
+            fontSize: 14,
+            onPressed: () async {
+              final navigator = Navigator.of(context, rootNavigator: true);
+              await AppSettings.openAppSettings(type: AppSettingsType.nfc);
+              if (context.mounted) {
+                navigator.pop();
+                _isDialogOpen = false;
+              }
+            },
+          ),
+        ],
+      ).then((_) => _isDialogOpen = false);
       return;
     }
 
-    setState(() => _isScanning = true);
     if (!mounted) return;
-
-    showGeneralDialog(
+    setState(() => _isScanning = true);
+    _isDialogOpen = true;
+    HudDialog.show(
       context: context,
       barrierDismissible: false,
-      barrierLabel: 'NfcScanDialog',
-      pageBuilder: (context, _, __) => Center(
-        child: GlassContainer(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.nfc, size: 64, color: Colors.orangeAccent),
-              const SizedBox(height: 24),
-              const HudText('열쇠 스캔 중', fontSize: 18, color: Colors.orangeAccent),
-              const SizedBox(height: 16),
-              const HudText(
-                '등록된 NFC 열쇠를\n기기 뒷면에 인식시켜 주세요.',
-                fontWeight: FontWeight.normal,
-                fontSize: 12,
-                color: Colors.white70,
-              ),
-              const SizedBox(height: 32),
-              SciFiButton(
-                text: '중단',
-                height: 45,
-                fontSize: 14,
-                isOutlined: true,
-                onPressed: () {
-                  NfcManager.instance.stopSession();
-                  Navigator.pop(context);
-                  setState(() => _isScanning = false);
-                },
-              ),
-            ],
-          ),
-        ),
+      title: '열쇠 스캔 중',
+      titleColor: Colors.orangeAccent,
+      content: const Column(
+        children: [
+          SizedBox(height: 16),
+          Icon(Icons.nfc, size: 64, color: Colors.orangeAccent),
+          SizedBox(height: 24),
+          HudText('등록된 NFC 열쇠를\n기기 뒷면에 인식시켜 주세요.', fontWeight: FontWeight.normal, fontSize: 12, color: Colors.white70, textAlign: TextAlign.center),
+        ],
       ),
-    );
+      actions: [
+        SciFiButton(
+          text: '중단',
+          height: 45,
+          fontSize: 14,
+          isOutlined: true,
+          onPressed: () {
+            NfcManager.instance.stopSession();
+            Navigator.of(context, rootNavigator: true).pop();
+            _isDialogOpen = false;
+            setState(() => _isScanning = false);
+          },
+        ),
+      ],
+    ).then((_) => _isDialogOpen = false);
+
+    if (!context.mounted) return;
+    final navigatorState = Navigator.of(context, rootNavigator: true);
+    final messengerState = ScaffoldMessenger.of(context);
 
     NfcManager.instance.startSession(
       pollingOptions: {
@@ -132,40 +193,48 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
       onDiscovered: (NfcTag tag) async {
       try {
         final ndef = Ndef.from(tag);
-        if (ndef == null || ndef.cachedMessage == null) {
-          throw Exception('유효한 열쇠 데이터가 없습니다.');
-        }
-
+        if (ndef == null || ndef.cachedMessage == null) throw Exception('유효한 열쇠 데이터가 없습니다.');
         final record = ndef.cachedMessage!.records.first;
-        final languageCodeLength = record.payload[0];
-        final scannedId = String.fromCharCodes(record.payload.sublist(1 + languageCodeLength));
+        String scannedId = '';
+        
+        if (record.typeNameFormat == TypeNameFormat.wellKnown && 
+            utf8.decode(record.type) == 'U') {
+          // URI Record 처리
+          final payload = record.payload;
+          final prefixByte = payload[0];
+          final prefix = _getUriPrefix(prefixByte);
+          final uriString = prefix + utf8.decode(payload.sublist(1));
+          final uri = Uri.parse(uriString);
+          scannedId = uri.queryParameters['nfcKeyId'] ?? '';
+        } else {
+          // 기존 텍스트 레코드 처리 폴백
+          final languageCodeLength = record.payload[0];
+          scannedId = String.fromCharCodes(record.payload.sublist(1 + languageCodeLength));
+        }
 
         final currentUser = ref.read(userProvider).value;
         if (currentUser == null) throw Exception('User authentication lost.');
-
-        await ref.read(gameRepositoryProvider).usePrisonKey(
-          gameId: widget.gameId,
-          uid: currentUser.uid,
+        await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).usePrisonKey(
+          gameId: widget.gameId, 
+          uid: currentUser.uid, 
           scannedId: scannedId,
-        );
-
+          serverTimeOffset: _serverTimeOffset,
+        ));
         await NfcManager.instance.stopSession();
-        
-        if (!mounted) return;
-        Navigator.pop(context);
-        setState(() => _isScanning = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('탈출 성공!'), backgroundColor: Colors.green),
-        );
-
+        if (mounted) {
+          navigatorState.pop();
+          _isDialogOpen = false;
+          setState(() => _isScanning = false);
+          messengerState.showSnackBar(const SnackBar(content: Text('탈출 성공!'), backgroundColor: Colors.green));
+        }
       } catch (e) {
         await NfcManager.instance.stopSession();
-        if (!mounted) return;
-        Navigator.pop(context);
-        setState(() => _isScanning = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('탈출 실패: $e'), backgroundColor: Colors.red),
-        );
+        if (mounted) {
+          navigatorState.pop();
+          _isDialogOpen = false;
+          setState(() => _isScanning = false);
+          messengerState.showSnackBar(SnackBar(content: Text('탈출 실패: $e'), backgroundColor: Colors.red));
+        }
       }
     });
   }
@@ -173,23 +242,31 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
   @override
   Widget build(BuildContext context) {
     final currentUser = ref.watch(userProvider).value;
-    final gameAsync = ref.watch(gameRepositoryProvider).watchGame(widget.gameId);
-    
+    final gameStream = ref.watch(gameRepositoryProvider).watchGame(widget.gameId);
+    final participantsStream = ref.watch(gameRepositoryProvider).watchParticipants(widget.gameId);
+
     return StreamBuilder<GameModel?>(
-      stream: gameAsync,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Scaffold(
-            backgroundColor: Colors.black,
-            body: Center(child: CircularProgressIndicator(color: Colors.redAccent)),
-          );
+      stream: gameStream,
+      builder: (context, gameSnapshot) {
+        if (!gameSnapshot.hasData) return const Center(child: CircularProgressIndicator(color: Colors.redAccent));
+        final game = gameSnapshot.data!;
+        if (game.status == GameStatus.finished) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) context.go('/result/${widget.gameId}');
+          });
+          return const Center(child: HudText('게임이 종료되었습니다.', fontSize: 18));
         }
 
-        final game = snapshot.data!;
-        final participantsAsync = ref.watch(gameRepositoryProvider).watchParticipants(widget.gameId);
-        
+        // startedAt + durationSec을 사용해 종료 시간 계산 (서버 시간 기준)
+        if (game.startedAt != null) {
+          final estimatedServerTime = DateTime.now().add(_serverTimeOffset);
+          final endsAt = game.startedAt!.add(Duration(seconds: game.durationSec));
+          _remainingTime = endsAt.difference(estimatedServerTime);
+          if (_remainingTime.isNegative) _remainingTime = Duration.zero;
+        }
+
         return StreamBuilder<List<ParticipantModel>>(
-          stream: participantsAsync,
+          stream: participantsStream,
           builder: (context, partSnapshot) {
             final participants = partSnapshot.data ?? [];
             final myParticipant = participants.firstWhere(
@@ -199,133 +276,84 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
 
             if (myParticipant.state == RobberState.free && myParticipant.uid.isNotEmpty) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (context.mounted && !_isScanning) {
+                if (mounted && !_isScanning) {
+                  if (_isDialogOpen) {
+                    Navigator.of(context, rootNavigator: true).pop();
+                    _isDialogOpen = false;
+                  }
                   context.go('/play/${widget.gameId}');
                 }
               });
             }
 
+
+
             final qrData = 'catchrun:${game.id}:${currentUser?.uid}';
 
-            return Scaffold(
-              backgroundColor: Colors.black,
-              body: OrientationBuilder(
-                builder: (context, orientation) {
-                  return Stack(
-                    children: [
-                      Positioned.fill(
-                        child: Image.asset(
-                          orientation == Orientation.portrait
-                              ? 'assets/image/profile_setting_portrait.png'
-                              : 'assets/image/profile_setting_landscape.png',
-                          fit: BoxFit.cover,
+            return SafeArea(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+
+                  const SizedBox(height: kToolbarHeight),
+                  const SizedBox(height: 20),
+                  GlassContainer(
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+                    child: Column(
+                      children: [
+                        HudText('남은 시간', fontSize: 14, color: Colors.white.withValues(alpha: 0.6), letterSpacing: 2),
+                        const SizedBox(height: 8),
+                        HudText(_formatDuration(_remainingTime), fontSize: 48, color: Colors.redAccent, fontWeight: FontWeight.w900),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Icon(Icons.lock_person_rounded, size: 100, color: Colors.redAccent, shadows: [Shadow(color: Colors.redAccent, blurRadius: 20)]),
+                  const SizedBox(height: 24),
+                  const HudText('수감 상태 활성', fontSize: 32, color: Colors.redAccent, letterSpacing: 2),
+                  const SizedBox(height: 16),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 48),
+                    child: HudText('지정된 장소에서 대기하세요.\n동료가 당신의 ID를 스캔하면 석방됩니다.', fontWeight: FontWeight.normal, fontSize: 13, color: Colors.white70, letterSpacing: 1, textAlign: TextAlign.center),
+                  ),
+                  const SizedBox(height: 32),
+
+                  GlassContainer(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                          child: QrImageView(data: qrData, version: QrVersions.auto, size: 180.0),
                         ),
+                        const SizedBox(height: 16),
+                        const HudText('신원 식별 코드', fontSize: 14, color: Colors.white70),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 48),
+                    child: SciFiButton(text: 'NFC 마스터키 사용', icon: Icons.vpn_key_rounded, onPressed: _useNfcKey),
+                  ),
+                  const SizedBox(height: 32),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                    child: GlassContainer(
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          StatItem(label: '활동 요원', value: '${game.counts.robbersFree}', valueColor: Colors.greenAccent),
+                          StatItem(label: '수감 인원', value: '${game.counts.robbersJailed}', valueColor: Colors.redAccent),
+                        ],
                       ),
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withValues(alpha: 0.85),
-                                Colors.redAccent.withValues(alpha: 0.1),
-                                Colors.black.withValues(alpha: 0.9),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      SafeArea(
-                        child: Column(
-                          children: [
-                            const Spacer(),
-                            const Icon(
-                              Icons.lock_person_rounded,
-                              size: 100,
-                              color: Colors.redAccent,
-                              shadows: [
-                                Shadow(color: Colors.redAccent, blurRadius: 20),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-                            const HudText(
-                              '수감 상태 활성',
-                              fontSize: 32,
-                              color: Colors.redAccent,
-                              letterSpacing: 2,
-                            ),
-                            const SizedBox(height: 16),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 48),
-                              child: HudText(
-                                '지정된 장소에서 대기하세요.\n동료가 당신의 ID를 스캔하면 석방됩니다.',
-                                fontWeight: FontWeight.normal,
-                                fontSize: 13,
-                                color: Colors.white70,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                            const Spacer(),
-                            
-                            GlassContainer(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: QrImageView(
-                                      data: qrData,
-                                      version: QrVersions.auto,
-                                      size: 200.0,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  const HudText(
-                                    '신원 식별 코드',
-                                    fontSize: 14,
-                                    color: Colors.white70,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            
-                            const SizedBox(height: 40),
-                            
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 48),
-                              child: SciFiButton(
-                                text: 'NFC 마스터키 사용',
-                                icon: Icons.vpn_key_rounded,
-                                onPressed: _useNfcKey,
-                              ),
-                            ),
-                            
-                            const Spacer(),
-                            
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-                              child: GlassContainer(
-                                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                  children: [
-                                    _buildStatItem('활동 요원', '${game.counts.robbersFree}', Colors.greenAccent),
-                                    _buildStatItem('수감 인원', '${game.counts.robbersJailed}', Colors.redAccent),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                },
+                    ),
+                  ),
+                  ],
+                ),
               ),
             );
           },
@@ -334,13 +362,13 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, Color color) {
-    return Column(
-      children: [
-        HudText(label, fontSize: 10, color: Colors.white.withValues(alpha: 0.5), fontWeight: FontWeight.normal),
-        const SizedBox(height: 8),
-        HudText(value, fontSize: 24, color: color),
-      ],
-    );
+  String _getUriPrefix(int prefixByte) {
+    switch (prefixByte) {
+      case 0x01: return 'http://www.';
+      case 0x02: return 'https://www.';
+      case 0x03: return 'http://';
+      case 0x04: return 'https://';
+      default: return '';
+    }
   }
 }
