@@ -8,6 +8,7 @@ import 'package:catchrun/core/providers/app_bar_provider.dart';
 import 'package:catchrun/core/widgets/hud_text.dart';
 import 'package:catchrun/core/widgets/glass_container.dart';
 import 'package:catchrun/core/widgets/gradient_border.dart';
+import 'package:catchrun/core/widgets/hud_dialog.dart';
 
 class QrScanScreen extends ConsumerStatefulWidget {
   final String gameId;
@@ -89,7 +90,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
   Future<void> _processQrData(String data) async {
     final parts = data.split(':');
     if (parts.length != 3 || parts[0] != 'catchrun') {
-      _showError('잘못된 QR 데이터 형식');
+      await _showError('잘못된 QR 데이터 형식');
       return;
     }
 
@@ -97,7 +98,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
     final targetUid = parts[2];
 
     if (targetGameId != widget.gameId) {
-      _showError('타 게임 데이터 감지됨');
+      await _showError('타 게임 데이터 감지됨');
       return;
     }
 
@@ -105,7 +106,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
     if (currentUser == null) return;
 
     if (targetUid == currentUser.uid) {
-      _showError('본인 스캔 금지');
+      await _showError('본인 스캔 금지');
       return;
     }
 
@@ -135,18 +136,23 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
 
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '').toUpperCase();
-      _showError(message);
+      await _showError(message);
     }
   }
 
-  void _showError(String message) {
+  Future<void> _showError(String message) async {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: HudText(message, fontSize: 13, color: Colors.white),
-          backgroundColor: Colors.redAccent.withValues(alpha: 0.8),
-          behavior: SnackBarBehavior.floating,
-        ),
+      await HudDialog.show(
+        context: context,
+        title: '알림',
+        titleColor: Colors.redAccent,
+        contentText: message,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+            child: const HudText('확인', color: Colors.white),
+          ),
+        ],
       );
     }
   }
