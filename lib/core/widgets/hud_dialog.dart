@@ -47,26 +47,29 @@ class HudDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassContainer(
-      padding: const EdgeInsets.all(24),
-      margin: const EdgeInsets.symmetric(horizontal: 40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          HudText(title, fontSize: 20, color: titleColor),
-          const SizedBox(height: 16),
-          if (contentText != null)
-            HudText(
-              contentText!,
-              fontWeight: FontWeight.normal,
-              textAlign: TextAlign.center,
+    return Material(
+      type: MaterialType.transparency,
+      child: GlassContainer(
+        padding: const EdgeInsets.all(24),
+        margin: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            HudText(title, fontSize: 20, color: titleColor),
+            const SizedBox(height: 16),
+            if (contentText != null)
+              HudText(
+                contentText!,
+                fontWeight: FontWeight.normal,
+                textAlign: TextAlign.center,
+              ),
+            if (content != null) content!,
+            const SizedBox(height: 32),
+            Row(
+              children: actions.map((action) => Expanded(child: action)).toList(),
             ),
-          if (content != null) content!,
-          const SizedBox(height: 32),
-          Row(
-            children: actions.map((action) => Expanded(child: action)).toList(),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
