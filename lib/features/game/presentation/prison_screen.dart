@@ -73,7 +73,26 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
         timer.cancel();
         return;
       }
+      _checkEndConditions();
       setState(() {});
+    });
+  }
+
+  void _checkEndConditions() {
+    final gameAsync = ref.read(gameRepositoryProvider).watchGame(widget.gameId);
+    gameAsync.first.then((game) {
+      if (game == null || game.status != GameStatus.playing) return;
+      final currentUser = ref.read(userProvider).value;
+      if (game.hostUid != currentUser?.uid) return;
+      
+      // startedAt + durationSec을 사용해 종료 시간 계산 (서버 시간 기준)
+      if (game.startedAt != null) {
+        final estimatedServerTime = DateTime.now().add(_serverTimeOffset);
+        final endsAt = game.startedAt!.add(Duration(seconds: game.durationSec));
+        if (estimatedServerTime.isAfter(endsAt)) {
+          NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).finishGame(game.id));
+        }
+      }
     });
   }
 
