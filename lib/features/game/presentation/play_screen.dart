@@ -94,18 +94,24 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
     final gameAsync = ref.read(gameRepositoryProvider).watchGame(widget.gameId);
     gameAsync.first.then((game) {
       if (game == null || game.status != GameStatus.playing) return;
-      final currentUser = ref.read(userProvider).value;
-      if (game.hostUid != currentUser?.uid) return;
+      
       // startedAt + durationSec을 사용해 종료 시간 계산 (서버 시간 기준)
       if (game.startedAt != null) {
         final estimatedServerTime = DateTime.now().add(_serverTimeOffset);
         final endsAt = game.startedAt!.add(Duration(seconds: game.durationSec));
+        
         if (estimatedServerTime.isAfter(endsAt)) {
-          NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).finishGame(game.id));
+          // [Smart Jitter] 모든 클라이언트가 동시에 요청하는 것을 방지하기 위해 랜덤 지연 추가
+          final randomDelay = (DateTime.now().millisecond % 3000); 
+          Future.delayed(Duration(milliseconds: randomDelay), () {
+            if (mounted) {
+              NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).finishGame(game.id));
+            }
+          });
         }
       }
+      if (mounted) setState(() {});
     });
-    setState(() {});
   }
 
   String _formatDuration(Duration d) {

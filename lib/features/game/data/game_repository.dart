@@ -429,23 +429,41 @@ class GameRepository {
 
 
   // 게임 종료
+  // 게임 종료 (분산 검증 대응: 누구나 호출 가능하지만 최초 1인만 성공)
   Future<void> finishGame(String gameId) async {
     await _connectivityService.ensureConnection();
-    await _firestore.runTransaction((transaction) async {
-      final gameRef = _firestore.collection('games').doc(gameId);
-      final gameDoc = await transaction.get(gameRef);
-      if (!gameDoc.exists) return;
+    
+    // 1. [First-order Check] 트랜잭션 진입 전 상태를 먼저 체크하여 불필요한 부하 방지
+    final gameDocBefore = await _firestore.collection('games').doc(gameId).get();
+    if (!gameDocBefore.exists || gameDocBefore.data()?['status'] != 'playing') {
+      return;
+    }
 
-      final gameData = gameDoc.data()!;
-      if (gameData['status'] != 'playing') return;
+    try {
+      await _firestore.runTransaction((transaction) async {
+        final gameRef = _firestore.collection('games').doc(gameId);
+        final gameDoc = await transaction.get(gameRef);
+        if (!gameDoc.exists) return;
 
-      await _finishGameInternal(
-        transaction: transaction,
-        gameRef: gameRef,
-        gameData: gameData,
-        now: DateTime.now(),
-      );
-    });
+        final gameData = gameDoc.data()!;
+        
+        // 2. [Atomic Verifier] 트랜잭션 내에서 원자적으로 상태 재호출 및 검증 (멱등성 보장)
+        if (gameData['status'] != 'playing') return;
+
+        await _finishGameInternal(
+          transaction: transaction,
+          gameRef: gameRef,
+          gameData: gameData,
+          now: DateTime.now(),
+        );
+      });
+    } catch (e) {
+      // 다른 클라이언트가 동시에 성공하여 충돌이 발생한 경우 조용히 리턴
+      if (e.toString().contains('ABORTED') || e.toString().contains('failed-precondition')) {
+        return;
+      }
+      rethrow;
+    }
   }
 
 

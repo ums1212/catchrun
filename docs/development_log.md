@@ -32,6 +32,31 @@
 
 ---
 
+### 🚀 아키텍처 개선: 분산 게임 종료 시스템 구축 (Decentralized Game Finish System)
+
+#### ✅ 주요 작업 및 성과
+- **방장 의존성 제거 및 분산 검증 로직 구현**
+    - 기존 방장(Host) 1인에게 의존하던 종료 로직을 모든 참가자가 참여하는 구조로 전면 개편
+    - **Smart Jitter 적용**: 클라이언트별 0~3초 랜덤 지연을 통해 동시 요청 부하(Thundering Herd) 현상 방지
+- **Firestore 트랜잭션 최적화 및 멱등성 확보**
+    - `GameRepository.finishGame`: 트랜잭션 진입 전 상태 선행 체크(First-order Check)와 트랜잭션 내 원자적 재검증(Atomic Verifier)을 결합하여 최초 1인만 성공하도록 보장
+- **UI 연동 및 예외 처리 강화**
+    - `PlayScreen`, `PrisonScreen`: 방장 여부와 상관없이 모든 기기에서 종료 조건을 감시하도록 수정
+    - 트랜잭션 충돌 시 발생하는 예외를 안전하게 처리하여 사용자 화면에 영향이 없도록 조치
+
+#### 📝 비고 / 특이사항
+- **신뢰성 확보**: 방장이 게임 중 앱을 강제 종료하거나 네트워크가 유실되더라도 다른 참가자 중 1명이라도 앱이 켜져 있으면 게임이 정상 종료됨
+- **전문적 최적화**: 트랜잭션 충돌을 방어하기 위한 Jitter 기법을 도입하여 서버 부하 걱정 없는 대안 제시
+
+#### 🔗 관련 파일
+- `lib/features/game/data/game_repository.dart` - 멱등성 트랜잭션 구현
+- `lib/features/game/presentation/play_screen.dart` - 분산 체크 및 Jitter 적용
+- `lib/features/game/presentation/prison_screen.dart` - 분산 체크 및 Jitter 적용
+
+---
+
+---
+
 ### 🚀 버그 수정: 화면 전환 시 QR 다이얼로그 잔상 제거 (QR Dialog Persistence Fix)
 
 #### ✅ 주요 작업 및 성과
