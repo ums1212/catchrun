@@ -13,6 +13,28 @@
 
 ---
 
+## 2026-01-18 (일)
+
+### 🚀 UX 개선: 게임 진행 중 뒤로가기 종료 확인 다이얼로그 안정화 (Game Shell Back Navigation Fix)
+
+#### ✅ 주요 작업 및 성과
+- **Game Shell 전역 뒤로가기 제어 시스템 구축**
+    - `GameShellWrapper`: 게임 플레이 관련 모든 화면(`PlayScreen`, `PrisonScreen`, `QrScanScreen`)을 감싸는 쉘 레벨에 `PopScope`를 적용하여 시스템 뒤로가기 이벤트를 일관되게 가로채도록 개선
+    - **종료 확인 다이얼로그 통합**: 뒤로가기 발생 시 "정말 게임에서 나가시겠습니까?" 다이얼로그를 표시하고, 사용자 승인 시에만 홈 화면으로 이동하도록 로직 통합
+- **구조적 버그 원인 파악 및 코드 정돈**
+    - **원인 분석**: `PlayScreen`이 `GameShellNavigator`의 루트(첫 번째) 화면일 경우, 개별 `PopScope`가 Navigator의 스택 판단 로직에 의해 무시될 수 있는 현상 확인 및 해결
+    - **중복 제거**: `PlayScreen` 내부에 개별적으로 구현되었던 다이얼로그 로직 및 `PopScope`를 제거하여 코드 유지보수성 향상
+
+#### 📝 비고 / 특이사항
+- **UX 신뢰도 향상**: 기존에 일부 상황에서 뒤로가기 시 앱이 즉시 종료되던 문제를 구조적으로 해결하여 사용자 피드백 반영
+- **확장성**: 향후 게임 쉘 내에 새로운 화면이 추가되더라도 별도의 설정 없이 뒤로가기 방지 로직이 즉시 적용되는 구조 확보
+
+#### 🔗 관련 파일
+- `lib/core/router/game_shell_wrapper.dart` - 전역 `PopScope` 및 종료 다이얼로그 구현
+- `lib/features/game/presentation/play_screen.dart` - 중복 로직 제거 및 코드 정리
+
+---
+
 ## 2026-01-15 (목)
 
 ### 🚀 기능 구현: NFC 보안 열쇠 고도화 및 딥링크 연동 (NFC Security Key & Deep Link Integration)
