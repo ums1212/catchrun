@@ -15,6 +15,27 @@
 
 ## 2026-01-18 (일)
 
+### 🚀 버그 수정: 화면 전환 시 QR 다이얼로그 잔상 제거 (QR Dialog Persistence Fix)
+
+#### ✅ 주요 작업 및 성과
+- **다이얼로그 상태 추적 및 강제 종료 로직 구현**
+    - `PlayScreen`, `PrisonScreen`: 다이얼로그의 열림 상태를 추적하는 `_isDialogOpen` 변수 추가
+    - **안전한 화면 전환**: 도둑이 체포되어 수감 화면으로 넘어가거나, 석방되어 플레이 화면으로 복귀할 때 열려 있는 다이얼로그(`rootNavigator`)를 먼저 닫은 후 이동(`context.go`)하도록 개선
+- **다이얼로그 생명주기 관리 최적화**
+    - `HudDialog.show().then(...)` 및 "닫기" 버튼의 콜백을 통해 다이얼로그가 닫힐 때 상태 변수가 정확히 업데이트되도록 보정
+    - `rootNavigator` 스택을 확인하여 존재할 때만 `pop`을 호출하도록 방어 로직 강화
+
+#### 📝 비고 / 특이사항
+- **UX 개선**: 화면이 전환되었음에도 이전 화면의 다이얼로그가 남아 상호작용을 방해하고 뒤로가기를 두 번 해야 했던 불편함을 해소
+- **구조적 해결**: 다이얼로그가 `rootNavigator`에 위치하여 화면 이동(`context.go`) 시 자동으로 닫히지 않던 엔진 특성을 고려한 명시적 종료 처리 적용
+
+#### 🔗 관련 파일
+- `lib/features/game/presentation/play_screen.dart` - 다이얼로그 추적 및 전환 로직 수정
+- `lib/features/game/presentation/prison_screen.dart` - 다이얼로그 추적 및 복귀 로직 수정
+
+---
+
+
 ### 🚀 기능 구현: 게임 활동 로그 확인 시스템 구축 (Activity Log Monitoring System)
 
 #### ✅ 주요 작업 및 성과

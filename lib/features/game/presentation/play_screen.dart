@@ -31,6 +31,7 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
   Map<String, dynamic>? _lastEvent;
   String? _lastEventId;
   bool _isProcessingAction = false;
+  bool _isDialogOpen = false;
 
   @override
   void initState() {
@@ -149,7 +150,13 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
 
             if (!isCop && isJailed) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) context.go('/prison/${widget.gameId}');
+                if (mounted) {
+                  if (_isDialogOpen) {
+                    Navigator.of(context, rootNavigator: true).pop();
+                    _isDialogOpen = false;
+                  }
+                  context.go('/prison/${widget.gameId}');
+                }
               });
               return const Center(child: CircularProgressIndicator(color: Colors.redAccent));
             }
@@ -278,18 +285,30 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
 
   void _showMyQr(BuildContext context, String? uid, Color themeColor) {
     if (uid == null) return;
+    _isDialogOpen = true;
     HudDialog.show(
       context: context,
       title: '신원 식별 QR',
       titleColor: themeColor,
       content: MyQrDialogContent(gameId: widget.gameId, uid: uid),
       actions: [
-        SciFiButton(text: '닫기', height: 45, fontSize: 14, onPressed: () => Navigator.of(context, rootNavigator: true).pop()),
+        SciFiButton(
+          text: '닫기',
+          height: 45,
+          fontSize: 14,
+          onPressed: () {
+            if (Navigator.of(context, rootNavigator: true).canPop()) {
+              Navigator.of(context, rootNavigator: true).pop();
+            }
+            _isDialogOpen = false;
+          },
+        ),
       ],
-    );
+    ).then((_) => _isDialogOpen = false);
   }
 
   void _showActivityLogDialog(BuildContext context) {
+    _isDialogOpen = true;
     HudDialog.show(
       context: context,
       title: '활동 로그',
@@ -299,29 +318,42 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
           text: '닫기',
           height: 45,
           fontSize: 14,
-          onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+          onPressed: () {
+            if (Navigator.of(context, rootNavigator: true).canPop()) {
+              Navigator.of(context, rootNavigator: true).pop();
+            }
+            _isDialogOpen = false;
+          },
         ),
       ],
-    );
+    ).then((_) => _isDialogOpen = false);
   }
 
   void _showExitDialog(BuildContext context) {
+    _isDialogOpen = true;
     HudDialog.show(
       context: context,
       title: '게임 종료',
       contentText: '정말 게임에서 나가시겠습니까?\n진행 중인 데이터는 무효화됩니다.',
       actions: [
-        TextButton(onPressed: () => Navigator.of(context, rootNavigator: true).pop(), child: const HudText('취소', color: Colors.white60)),
+        TextButton(
+          onPressed: () {
+            Navigator.of(context, rootNavigator: true).pop();
+            _isDialogOpen = false;
+          },
+          child: const HudText('취소', color: Colors.white60),
+        ),
         SciFiButton(
           text: '나가기',
           height: 45,
           fontSize: 14,
           onPressed: () {
             Navigator.of(context, rootNavigator: true).pop();
+            _isDialogOpen = false;
             context.go('/home');
           },
         ),
       ],
-    );
+    ).then((_) => _isDialogOpen = false);
   }
 }

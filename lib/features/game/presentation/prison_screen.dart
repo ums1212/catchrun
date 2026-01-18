@@ -33,6 +33,7 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
   Timer? _timer;
   Duration _remainingTime = Duration.zero;
   Duration _serverTimeOffset = Duration.zero;
+  bool _isDialogOpen = false;
 
   @override
   void initState() {
@@ -86,6 +87,7 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
     final availability = await NfcManager.instance.checkAvailability();
     if (availability != NfcAvailability.enabled) {
     if (!mounted) return;
+    _isDialogOpen = true;
     HudDialog.show(
         context: context,
         title: 'NFC 비활성',
@@ -97,7 +99,10 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
             height: 45,
             fontSize: 14,
             isOutlined: true,
-            onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+            onPressed: () {
+              Navigator.of(context, rootNavigator: true).pop();
+              _isDialogOpen = false;
+            },
           ),
           SciFiButton(
             text: '설정',
@@ -106,16 +111,20 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
             onPressed: () async {
               final navigator = Navigator.of(context, rootNavigator: true);
               await AppSettings.openAppSettings(type: AppSettingsType.nfc);
-              if (context.mounted) navigator.pop();
+              if (context.mounted) {
+                navigator.pop();
+                _isDialogOpen = false;
+              }
             },
           ),
         ],
-      );
+      ).then((_) => _isDialogOpen = false);
       return;
     }
 
     if (!mounted) return;
     setState(() => _isScanning = true);
+    _isDialogOpen = true;
     HudDialog.show(
       context: context,
       barrierDismissible: false,
@@ -138,11 +147,12 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
           onPressed: () {
             NfcManager.instance.stopSession();
             Navigator.of(context, rootNavigator: true).pop();
+            _isDialogOpen = false;
             setState(() => _isScanning = false);
           },
         ),
       ],
-    );
+    ).then((_) => _isDialogOpen = false);
 
     if (!context.mounted) return;
     final navigatorState = Navigator.of(context, rootNavigator: true);
@@ -181,6 +191,7 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
         await NfcManager.instance.stopSession();
         if (mounted) {
           navigatorState.pop();
+          _isDialogOpen = false;
           setState(() => _isScanning = false);
           messengerState.showSnackBar(const SnackBar(content: Text('탈출 성공!'), backgroundColor: Colors.green));
         }
@@ -188,6 +199,7 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
         await NfcManager.instance.stopSession();
         if (mounted) {
           navigatorState.pop();
+          _isDialogOpen = false;
           setState(() => _isScanning = false);
           messengerState.showSnackBar(SnackBar(content: Text('탈출 실패: $e'), backgroundColor: Colors.red));
         }
@@ -232,7 +244,13 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
 
             if (myParticipant.state == RobberState.free && myParticipant.uid.isNotEmpty) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && !_isScanning) context.go('/play/${widget.gameId}');
+                if (mounted && !_isScanning) {
+                  if (_isDialogOpen) {
+                    Navigator.of(context, rootNavigator: true).pop();
+                    _isDialogOpen = false;
+                  }
+                  context.go('/play/${widget.gameId}');
+                }
               });
             }
 
