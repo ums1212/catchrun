@@ -8,6 +8,8 @@ import 'package:catchrun/core/widgets/glass_container.dart';
 import 'package:catchrun/core/widgets/scifi_button.dart';
 import 'package:catchrun/core/widgets/hud_section_header.dart';
 import 'package:catchrun/features/game/presentation/widgets/result_widgets.dart';
+import 'package:catchrun/features/game/presentation/widgets/play_widgets.dart';
+import 'package:catchrun/core/widgets/hud_dialog.dart';
 import 'package:go_router/go_router.dart';
 
 class ResultScreen extends ConsumerWidget {
@@ -208,6 +210,15 @@ class ResultScreen extends ConsumerWidget {
 
                     const SizedBox(height: 60),
 
+                    const SizedBox(height: 20),
+                    SciFiButton(
+                      text: '활동 로그 확인',
+                      isOutlined: true,
+                      onPressed: () => _showActivityLogDialog(context),
+                    ),
+
+                    const SizedBox(height: 40),
+
                     // Action Button
                     SciFiButton(
                       text: '홈으로 돌아가기',
@@ -226,6 +237,22 @@ class ResultScreen extends ConsumerWidget {
     );
   }
 
+  void _showActivityLogDialog(BuildContext context) {
+    HudDialog.show(
+      context: context,
+      title: '활동 로그 확인',
+      titleColor: Colors.cyanAccent,
+      content: ActivityLogDialogContent(gameId: gameId),
+      actions: [
+        SciFiButton(
+          text: '닫기',
+          height: 45,
+          fontSize: 14,
+          onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+        ),
+      ],
+    );
+  }
 }
 
 // Provider extensions for watching

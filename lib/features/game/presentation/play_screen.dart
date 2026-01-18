@@ -199,6 +199,17 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: SciFiButton(
+                          text: '활동 로그 확인',
+                          height: 40,
+                          fontSize: 12,
+                          isOutlined: true,
+                          onPressed: () => _showActivityLogDialog(context),
+                        ),
+                      ),
                       const Spacer(),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -274,6 +285,22 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
       content: MyQrDialogContent(gameId: widget.gameId, uid: uid),
       actions: [
         SciFiButton(text: '닫기', height: 45, fontSize: 14, onPressed: () => Navigator.of(context, rootNavigator: true).pop()),
+      ],
+    );
+  }
+
+  void _showActivityLogDialog(BuildContext context) {
+    HudDialog.show(
+      context: context,
+      title: '활동 로그',
+      content: ActivityLogDialogContent(gameId: widget.gameId),
+      actions: [
+        SciFiButton(
+          text: '닫기',
+          height: 45,
+          fontSize: 14,
+          onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+        ),
       ],
     );
   }

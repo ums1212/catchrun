@@ -15,6 +15,30 @@
 
 ## 2026-01-18 (일)
 
+### 🚀 기능 구현: 게임 활동 로그 확인 시스템 구축 (Activity Log Monitoring System)
+
+#### ✅ 주요 작업 및 성과
+- **전역 이벤트 모니터링 스트림 구현**
+    - `GameRepository`: `watchAllEvents(String gameId)` 메소드를 추가하여 해당 게임의 모든 기록을 최신순으로 실시간 감시 가능하도록 고도화
+- **플레이 및 결과 화면 UI 통합**
+    - **PlayScreen**: 인원수 통계 섹션 하단에 "활동 로그 확인" 버튼을 추가하여 플레이 중 실시간 상황 복기 가능
+    - **ResultScreen**: 최종 순위표 하단에 동일한 버튼을 배치하여 게임 종료 후 전체 타임라인 확인 지원
+- **사용자 중심 로그 다이얼로그 구현**
+    - `ActivityLogDialogContent`: 발생 시간([HH:mm:ss])과 활동 메시지를 가독성 있게 표시하는 전용 로그 뷰어 구축
+    - 리스트가 길어질 경우를 대비한 스크롤 및 최대 높이 제한 적용
+
+#### 📝 비고 / 특이사항
+- **코드 재사용성**: 하나의 로그 위젯(`ActivityLogDialogContent`)을 플레이 화면과 결과 화면에서 공유하여 유지보수 효율 극대화
+- **UX 가독성**: 결과 화면에서는 '영웅들의 발자취'라는 서사적인 타이틀을 적용하여 게임 마무리 경험 향상
+
+#### 🔗 관련 파일
+- `lib/features/game/data/game_repository.dart` - `watchAllEvents` 스트림 추가
+- `lib/features/game/presentation/play_screen.dart` - 활동 로그 다이얼로그 연동
+- `lib/features/game/presentation/result_screen.dart` - 결과 화면 내 로그 확인 버튼 추가
+- `lib/features/game/presentation/widgets/play_widgets.dart` - `ActivityLogDialogContent` 위젯 구현
+
+---
+
 ### 🚀 UX 개선: 게임 진행 중 뒤로가기 종료 확인 다이얼로그 안정화 (Game Shell Back Navigation Fix)
 
 #### ✅ 주요 작업 및 성과

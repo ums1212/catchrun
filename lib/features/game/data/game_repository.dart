@@ -778,7 +778,7 @@ class GameRepository {
     });
   }
 
-  // 실시간 이벤트 감시 (팝업용)
+  // 실시간 이벤트 감시 (팝업용 - 최신 1개)
   Stream<Map<String, dynamic>?> watchLatestEvent(String gameId) {
     return _firestore
         .collection('games')
@@ -793,6 +793,21 @@ class GameRepository {
       data['id'] = snapshot.docs.first.id;
       return data;
     });
+  }
+
+  // 실시간 모든 이벤트 감시 (로그용)
+  Stream<List<Map<String, dynamic>>> watchAllEvents(String gameId) {
+    return _firestore
+        .collection('games')
+        .doc(gameId)
+        .collection('events')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList());
   }
 
   // 참가자 목록 스트림

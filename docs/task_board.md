@@ -7,7 +7,6 @@
 - 치팅 방지 강화(Cloud Functions authoritative server)
 - 장기 미사용(미완성 프로필) 유령 회원 자동 삭제 시스템 (@user_cleanup_design.md)
 - **NFC 고도화**: NFC 태그 시 앱 자동 실행(AAR) 및 미설치 시 마켓(Deep Link) 이동 기능
-- 경찰과 도둑 활동내역(탈출, 수감, 열쇠 사용 등)을 플레이화면에서 로그 목록으로 표시할 수 있는 버튼 추가(파이어스토어에 로그 저장)
 - 스플래시스크린의 배경색 지정방법 확인
 - 보안 열쇠 중복 등록 시 이미 등록된 NFC 메시지 알림
 
@@ -113,6 +112,7 @@
   - games.counts 업데이트
   - events: KEY_USED (audience=cops)
 - 플레이 화면에서 events 구독 → EventPopupOverlay 구현
+- [x] 플레이 화면 및 결과 화면에 활동 로그 확인 버튼/다이얼로그 추가
 - 팝업 중복 방지(최근 eventId 캐시)
 
 ## Sprint 6 — 점수/결과/칭호 + 폴리싱
