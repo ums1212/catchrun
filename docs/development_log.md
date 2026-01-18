@@ -14,6 +14,30 @@
 ---
 
 ## 2026-01-18 (일)
+ 
+### 🚀 버그 수정: 도둑 플레이어 점수 마이너스 표시 오류 해결 (Robber Score Underflow Fix)
+ 
+#### ✅ 주요 작업 및 성과
+- **서버 시간 오프셋 보정 로직 통합**
+    - `GameRepository`: 점수 산출 및 시간 계산이 필요한 주요 메소드(`finishGame`, `catchRobber`, `usePrisonKey`)에 `serverTimeOffset` 파라미터를 추가하고 이를 반영하도록 고도화
+    - **시간 불일치 해결**: 기기 로컬 시간(`DateTime.now()`) 대신 추정 서버 시간(`getEstimatedServerTime`)을 사용하여 기기 간 시간 차이로 인한 데이터 왜곡 방지
+- **생존 시간 계산 안전성 확보**
+    - 도둑의 생존 시간(`addedSurvivalSec`) 계산 시 `max(0, ...)`를 적용하여, 클라이언트-서버 간 미세한 시간차나 설정 오류로 인해 점수가 음수가 되는 현상을 원천 차단
+- **UI-Repository 간 데이터 동기화**
+    - `PlayScreen`, `PrisonScreen`, `QrScanScreen`: 각 화면에서 계산된 서버 시간 오프셋을 Repository 호출 시 정확히 전달하도록 전체 호출부 수정
+ 
+#### 📝 비고 / 특이사항
+- **데이터 신뢰성 향상**: 기기 시간이 수동으로 잘못 설정된 환경에서도 게임 데이터(점수, 생존 시간)의 무결성을 보장할 수 있게 됨
+- **로직 일관성**: 모든 핵심 게임 액션(체포, 탈출, 종료)에서 동일한 시간 보정 알고리즘을 사용하도록 표준화
+ 
+#### 🔗 관련 파일
+- `lib/features/game/data/game_repository.dart` - 서버 시간 오프셋 적용 및 음수 방지 로직
+- `lib/features/game/presentation/play_screen.dart` - 오프셋 전달 로직 추가
+- `lib/features/game/presentation/prison_screen.dart` - 오프셋 전달 로직 추가
+- `lib/features/game/presentation/qr_scan_screen.dart` - 오프셋 전달 로직 추가
+ 
+---
+ 
 
 ### 🚀 버그 수정: 감옥 수감 중 게임 종료 미작동 해결 (Prison Screen Game Finish Fix)
 

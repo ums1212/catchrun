@@ -371,6 +371,7 @@ class GameRepository {
     required DocumentReference gameRef,
     required Map<String, dynamic> gameData,
     required DateTime now,
+    Duration serverTimeOffset = Duration.zero,
   }) async {
     // 1. 모든 참가자 정보를 가져와서 승리 판정 및 점수 정산
     final participantsSnapshot = await gameRef.collection('participants').get();
@@ -391,7 +392,7 @@ class GameRepository {
         int addedSurvivalSec = 0;
         if (p.state == RobberState.free) {
           final lastChanged = p.lastStateChangedAt ?? (gameData['startedAt'] as Timestamp?)?.toDate() ?? now;
-          addedSurvivalSec = now.difference(lastChanged).inSeconds;
+          addedSurvivalSec = max(0, now.difference(lastChanged).inSeconds);
         }
         
         final finalSurvivalSec = p.stats.survivalSec + addedSurvivalSec;
@@ -430,7 +431,7 @@ class GameRepository {
 
   // 게임 종료
   // 게임 종료 (분산 검증 대응: 누구나 호출 가능하지만 최초 1인만 성공)
-  Future<void> finishGame(String gameId) async {
+  Future<void> finishGame(String gameId, {Duration serverTimeOffset = Duration.zero}) async {
     await _connectivityService.ensureConnection();
     
     // 1. [First-order Check] 트랜잭션 진입 전 상태를 먼저 체크하여 불필요한 부하 방지
@@ -454,7 +455,8 @@ class GameRepository {
           transaction: transaction,
           gameRef: gameRef,
           gameData: gameData,
-          now: DateTime.now(),
+          now: getEstimatedServerTime(serverTimeOffset),
+          serverTimeOffset: serverTimeOffset,
         );
       });
     } catch (e) {
@@ -569,6 +571,7 @@ class GameRepository {
     required String gameId,
     required String copUid,
     required String robberUid,
+    Duration serverTimeOffset = Duration.zero,
   }) async {
     await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
@@ -591,9 +594,9 @@ class GameRepository {
       }
 
 
-      final now = DateTime.now();
+      final now = getEstimatedServerTime(serverTimeOffset);
       final lastChanged = robberData.lastStateChangedAt ?? (gameDoc.data()!['startedAt'] as Timestamp?)?.toDate() ?? now;
-      final addedSurvivalSec = now.difference(lastChanged).inSeconds;
+      final addedSurvivalSec = max(0, now.difference(lastChanged).inSeconds);
 
       // 1. 도둑 상태 업데이트
       transaction.update(robberRef, {
@@ -648,6 +651,7 @@ class GameRepository {
           gameRef: gameRef,
           gameData: updatedGameData,
           now: now,
+          serverTimeOffset: serverTimeOffset,
         );
       }
     });
@@ -733,6 +737,7 @@ class GameRepository {
     required String gameId,
     required String uid,
     required String scannedId,
+    Duration serverTimeOffset = Duration.zero,
   }) async {
     await _connectivityService.ensureConnection();
     await _firestore.runTransaction((transaction) async {
@@ -755,7 +760,7 @@ class GameRepository {
         throw Exception('유효하지 않은 열쇠입니다.');
       }
 
-      final now = DateTime.now();
+      final now = getEstimatedServerTime(serverTimeOffset);
       final rescueDisabledUntil = now.add(const Duration(minutes: 5));
 
       // 1. 도둑 상태 업데이트 (자유 상태 + 구출 제한 + 점수 차감)

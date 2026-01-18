@@ -105,7 +105,10 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
           final randomDelay = (DateTime.now().millisecond % 3000); 
           Future.delayed(Duration(milliseconds: randomDelay), () {
             if (mounted) {
-              NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).finishGame(game.id));
+              NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).finishGame(
+                game.id,
+                serverTimeOffset: _serverTimeOffset,
+              ));
             }
           });
         }

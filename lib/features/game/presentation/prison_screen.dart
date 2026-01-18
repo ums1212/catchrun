@@ -93,7 +93,10 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
           final randomDelay = (DateTime.now().millisecond % 3000); 
           Future.delayed(Duration(milliseconds: randomDelay), () {
             if (mounted) {
-              NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).finishGame(game.id));
+              NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).finishGame(
+                game.id,
+                serverTimeOffset: _serverTimeOffset,
+              ));
             }
           });
         }
@@ -211,7 +214,12 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
 
         final currentUser = ref.read(userProvider).value;
         if (currentUser == null) throw Exception('User authentication lost.');
-        await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).usePrisonKey(gameId: widget.gameId, uid: currentUser.uid, scannedId: scannedId));
+        await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).usePrisonKey(
+          gameId: widget.gameId, 
+          uid: currentUser.uid, 
+          scannedId: scannedId,
+          serverTimeOffset: _serverTimeOffset,
+        ));
         await NfcManager.instance.stopSession();
         if (mounted) {
           navigatorState.pop();

@@ -25,6 +25,7 @@ class QrScanScreen extends ConsumerStatefulWidget {
 
 class _QrScanScreenState extends ConsumerState<QrScanScreen> {
   bool _isProcessing = false;
+  Duration _serverTimeOffset = Duration.zero;
   final MobileScannerController _controller = MobileScannerController(
     facing: CameraFacing.back,
     torchEnabled: false,
@@ -39,6 +40,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
         _updateAppBar();
       }
     });
+    _initServerTimeOffset();
   }
 
   void _updateAppBar() {
@@ -48,6 +50,15 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
       centerTitle: true,
       titleColor: themeColor,
     );
+  }
+
+  void _initServerTimeOffset() async {
+    try {
+      final offset = await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).calculateServerTimeOffset());
+      if (mounted) setState(() => _serverTimeOffset = offset);
+    } catch (e) {
+      // Ignore
+    }
   }
 
   @override
@@ -104,6 +115,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
           gameId: widget.gameId,
           copUid: currentUser.uid,
           robberUid: targetUid,
+          serverTimeOffset: _serverTimeOffset,
         ));
         _showSuccess('대상 체포 완료');
       } else {
