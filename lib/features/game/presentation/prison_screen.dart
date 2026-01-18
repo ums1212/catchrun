@@ -259,8 +259,10 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
             final qrData = 'catchrun:${game.id}:${currentUser?.uid}';
 
             return SafeArea(
-              child: Column(
-                children: [
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+
                   const SizedBox(height: kToolbarHeight),
                   const SizedBox(height: 20),
                   GlassContainer(
@@ -282,7 +284,8 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
                     padding: EdgeInsets.symmetric(horizontal: 48),
                     child: HudText('지정된 장소에서 대기하세요.\n동료가 당신의 ID를 스캔하면 석방됩니다.', fontWeight: FontWeight.normal, fontSize: 13, color: Colors.white70, letterSpacing: 1, textAlign: TextAlign.center),
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 32),
+
                   GlassContainer(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -302,7 +305,8 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 48),
                     child: SciFiButton(text: 'NFC 마스터키 사용', icon: Icons.vpn_key_rounded, onPressed: _useNfcKey),
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 32),
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
                     child: GlassContainer(
@@ -316,7 +320,8 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
                       ),
                     ),
                   ),
-                ],
+                  ],
+                ),
               ),
             );
           },

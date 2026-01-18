@@ -60,6 +60,22 @@
 
 ---
 
+### 🚀 UX 개선: Prison Screen 하단 잘림 현상 해결 (스크롤 추가 및 레이아웃 최적화)
+
+#### ✅ 주요 작업 및 성과
+- **`PrisonScreen` 스크롤 기능 추가**: 화면 내용이 기기 높이를 초과할 경우 하단 UI 요소가 잘리는 문제를 해결하기 위해 `SingleChildScrollView`를 적용
+- **레이아웃 최적화**: `SafeArea` 및 `Expanded` 위젯을 활용하여 다양한 화면 크기 및 노치 디자인에 대응하도록 UI 구성 요소를 재배치
+- **일관된 디자인 유지**: 기존 `PrisonScreen`의 사이버펑크 테마와 `HudDialog` 스타일을 유지하면서 스크롤 기능을 통합
+
+#### 📝 비고 / 특이사항
+- **사용자 경험 향상**: 특정 기기에서 발생하던 UI 잘림 현상을 해결하여 모든 사용자가 원활하게 게임을 플레이할 수 있도록 개선
+- **반응형 UI 강화**: 향후 다양한 해상도의 기기에서도 안정적인 화면을 제공할 수 있는 기반 마련
+
+#### 🔗 관련 파일
+- `lib/features/game/presentation/prison_screen.dart` - `SingleChildScrollView` 및 레이아웃 최적화
+
+---
+
 ### 🚀 UX 개선: 게임 진행 중 뒤로가기 종료 확인 다이얼로그 안정화 (Game Shell Back Navigation Fix)
 
 #### ✅ 주요 작업 및 성과
