@@ -122,6 +122,23 @@ final routerProvider = Provider<GoRouter>((ref) {
               );
             },
           ),
+          GoRoute(
+            path: '/edit-profile',
+            pageBuilder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>? ?? {};
+              return CustomTransitionPage(
+                key: state.pageKey,
+                child: OnboardingScreen(
+                  isEditMode: true,
+                  initialNickname: extra['nickname'],
+                  initialAvatarSeed: extra['avatarSeed'],
+                ),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  return SlideTransition(position: Tween(begin: Offset(1, 0), end: Offset.zero).animate(animation), child: child);
+                },
+              );
+            },
+          ),
         ],
       ),
 

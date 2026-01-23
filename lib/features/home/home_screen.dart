@@ -116,6 +116,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                 HomeProfileCard(
                   nickname: user?.nickname ?? '사용자',
                   avatarSeed: user?.avatarSeed,
+                  onTap: () => context.push(
+                    '/edit-profile',
+                    extra: {
+                      'nickname': user?.nickname ?? '',
+                      'avatarSeed': user?.avatarSeed ?? '1',
+                    },
+                  ),
                 ),
                 const SizedBox(height: 60),
                 // Action Buttons

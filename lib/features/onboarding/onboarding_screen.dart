@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:catchrun/core/providers/app_bar_provider.dart';
 import 'package:catchrun/core/user/nickname_generator.dart';
 import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +13,16 @@ import 'package:catchrun/features/onboarding/widgets/neon_icon_button.dart';
 import 'package:catchrun/features/onboarding/widgets/onboarding_text_field.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
-  const OnboardingScreen({super.key});
+  final bool isEditMode;
+  final String? initialNickname;
+  final String? initialAvatarSeed;
+
+  const OnboardingScreen({
+    super.key,
+    this.isEditMode = false,
+    this.initialNickname,
+    this.initialAvatarSeed,
+  });
 
   @override
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -25,8 +35,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   void initState() {
     super.initState();
-    _nicknameController = TextEditingController(text: NicknameGenerator.generate());
-    _avatarSeed = '1'; // Default initial avatar
+    if (widget.isEditMode) {
+      // 수정 모드: 기존 값으로 초기화
+      _nicknameController = TextEditingController(text: widget.initialNickname ?? '');
+      _avatarSeed = widget.initialAvatarSeed ?? '1';
+      
+      // Main Shell의 AppBar 설정
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(appBarProvider.notifier).state = AppBarConfig(
+            title: '프로필 수정',
+            centerTitle: true,
+          );
+        }
+      });
+    } else {
+      // 신규 사용자: 랜덤 생성
+      _nicknameController = TextEditingController(text: NicknameGenerator.generate());
+      _avatarSeed = '1';
+    }
   }
 
   @override
@@ -56,6 +83,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget build(BuildContext context) {
     ref.listen<AsyncValue<void>>(authControllerProvider, (previous, next) {
       next.whenOrNull(
+        data: (_) {
+          // 수정 모드에서 완료 시 홈으로 돌아가기
+          if (widget.isEditMode && context.mounted) {
+            Navigator.of(context).pop();
+          }
+        },
         error: (error, stackTrace) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -70,10 +103,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final authState = ref.watch(authControllerProvider);
 
     return PopScope(
-      canPop: false,
+      canPop: widget.isEditMode, // 수정 모드에서는 바로 뒤로가기 가능
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
+        if (widget.isEditMode) return; // 수정 모드에서는 다이얼로그 없이 뒤로가기
 
+        // 신규 사용자 모드에서만 취소 확인 다이얼로그 표시
         final shouldPop = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
@@ -110,19 +145,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       },
       child: Scaffold(
         extendBodyBehindAppBar: true,
-        backgroundColor: Colors.black,
-        appBar: AppBar(
-          title: HudText(
-            '프로필 설정',
-            fontSize: 20,
-            letterSpacing: 2,
-            color: Colors.cyanAccent.withValues(alpha: 0.8),
-          ),
-          centerTitle: true,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          iconTheme: const IconThemeData(color: Colors.cyanAccent),
-        ),
+        backgroundColor: widget.isEditMode ? Colors.transparent : Colors.black,
+        appBar: widget.isEditMode
+            ? null // 수정 모드에서는 Main Shell의 AppBar 사용
+            : AppBar(
+                title: HudText(
+                  '프로필 설정',
+                  fontSize: 20,
+                  letterSpacing: 2,
+                  color: Colors.cyanAccent.withValues(alpha: 0.8),
+                ),
+                centerTitle: true,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                iconTheme: const IconThemeData(color: Colors.cyanAccent),
+              ),
         body: OrientationBuilder(
           builder: (context, orientation) {
             final backgroundImage = orientation == Orientation.portrait
@@ -132,31 +169,33 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             return SizedBox.expand(
               child: Stack(
                 children: [
-                  // 1. Background Image
-                  Positioned.fill(
-                    child: Image.asset(
-                      backgroundImage,
-                      fit: BoxFit.cover,
+                  // 1. Background Image (신규 온보딩에서만 표시)
+                  if (!widget.isEditMode)
+                    Positioned.fill(
+                      child: Image.asset(
+                        backgroundImage,
+                        fit: BoxFit.cover,
+                      ),
                     ),
-                  ),
-                  // 2. Scanline/CRT Effect Overlay (Optional but cool)
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.9),
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.7),
-                            Colors.transparent,
-                          ],
-                          stops: const [0.0, 0.7, 1.0],
+                  // 2. Scanline/CRT Effect Overlay (신규 온보딩에서만 표시)
+                  if (!widget.isEditMode)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.9),
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.7),
+                              Colors.transparent,
+                            ],
+                            stops: const [0.0, 0.7, 1.0],
+                          ),
                         ),
                       ),
                     ),
-                  ),
                   // 3. Content
                   SafeArea(
                     child: SingleChildScrollView(
@@ -192,7 +231,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                             const CircularProgressIndicator(color: Colors.cyanAccent)
                           else
                             SciFiButton(
-                              text: '설정 완료',
+                              text: widget.isEditMode ? '수정 완료' : '설정 완료',
                               onPressed: () {
                                 final nickname = _nicknameController.text.trim();
                                 if (nickname.isNotEmpty) {

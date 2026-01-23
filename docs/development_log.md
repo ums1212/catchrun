@@ -13,6 +13,41 @@
 
 ---
 
+## 2026-01-23 (목)
+
+### 🚀 기능 구현: 홈화면 아바타 클릭으로 프로필 수정 (Profile Edit from Home Avatar)
+
+#### ✅ 주요 작업 및 성과
+- **홈화면 프로필 클릭 시 수정 화면 진입 기능 구현**
+    - `HomeProfileCard`: `onTap` 콜백 파라미터 추가 및 `GestureDetector`로 클릭 가능하게 변경
+    - 아바타 우측 하단에 편집 아이콘 인디케이터 표시 (클릭 가능 시에만)
+    - `HomeScreen`: 아바타 클릭 시 `/edit-profile` 경로로 이동하며 기존 닉네임/아바타 값을 `extra`로 전달
+- **OnboardingScreen 수정 모드 지원 추가**
+    - `isEditMode`, `initialNickname`, `initialAvatarSeed` 파라미터 추가
+    - 수정 모드에서는 기존 값으로 닉네임/아바타 초기화
+    - AppBar 타이틀: "프로필 수정" (수정 모드) / "프로필 설정" (신규)
+    - 버튼 텍스트: "수정 완료" (수정 모드) / "설정 완료" (신규)
+    - 뒤로가기: 수정 모드에서는 취소 다이얼로그 없이 바로 pop
+    - 완료 시: 수정 모드에서는 홈으로 자동 복귀
+- **Main Shell AppBar 중복 방지**
+    - 수정 모드에서는 OnboardingScreen 자체 AppBar와 배경 제거
+    - `appBarProvider`를 통해 Main Shell의 AppBar에 "프로필 수정" 타이틀 설정
+- **라우터 `/edit-profile` 경로 추가**
+    - Main Shell 내부에 배치하여 일관된 앱바와 배경 제공
+    - `extra` 파라미터로 기존 프로필 값 전달
+
+#### 📝 비고 / 특이사항
+- **라우트 분리 이유**: 기존 `/onboarding` 경로는 프로필 미완성 사용자 전용 리다이렉트 로직이 있어 별도 경로로 분리
+- **타입 오류 수정**: `state.extra`를 `Map<String, dynamic>`으로 캐스팅하여 런타임 오류 해결
+
+#### 🔗 관련 파일
+- `lib/features/home/widgets/home_profile_card.dart` - 클릭 이벤트 및 편집 아이콘 추가
+- `lib/features/home/home_screen.dart` - 아바타 클릭 시 /edit-profile로 이동
+- `lib/features/onboarding/onboarding_screen.dart` - 수정 모드 지원 추가
+- `lib/core/router/app_router.dart` - /edit-profile 라우트 추가
+
+---
+
 ## 2026-01-18 (일)
  
 ### 🚀 버그 수정: 다이얼로그 텍스트 밑줄 및 스타일 상속 이슈 해결 (HUD Dialog Text Style Fix)
