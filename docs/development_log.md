@@ -15,6 +15,31 @@
 
 ## 2026-01-23 (목)
 
+### 🚀 UX 개선: 로비 화면 반응형 스크롤 UI 구현 (Lobby Collapsible Game Code Card)
+
+#### ✅ 주요 작업 및 성과
+- **NestedScrollView 기반의 네이티브급 폴딩 아키텍처 및 인터랙션 구현**
+    - **헤더 클릭 토글 기능**: "미션 식별 코드 ▼" 영역 클릭 시 카드가 자동으로 접히거나 펼쳐지는 편의 기능을 추가했습니다. `ScrollController` 애니메이션을 통해 부드러운 상태 전환을 제공합니다.
+    - **Z-Index 겹침 문제 최종 해결**: `SliverOverlapAbsorber/Injector` 조합으로 참여 목록이 카드를 가리거나 아래로 파고드는 현상을 완벽 차단했습니다.
+    - **Hacky한 여백 제거**: 스크롤 가동 범위 확보를 위해 사용했던 임시 공백들을 제거하고, `NestedScrollView` 아키텍처를 통해 목록 길이에 상관없는 범용적인 폴딩 시스템을 구축했습니다.
+    - **시각적 완성도**: `BouncingScrollPhysics` 적용과 QR 코드 레이아웃 최적화로 네이티브 앱 수준의 고품질 UI를 달성했습니다.
+- **UI/UX 정밀화**
+    - `LobbyGameCodeCard`: `expandRatio`에 기반한 실시간 레이아웃 변형(높이, 투명도, 아이콘 회전, QR 스케일) 최적화
+    - 부모 위젯의 `setState` 없이 `ScrollController`의 오프셋 변화에만 반응하여 깜빡임 없는 네이티브 수준의 스크롤 경험 제공
+
+#### 📝 비고 / 특이사항
+- **UX 향상**: 참여자 목록이 많을 때 화면 공간을 효율적으로 활용 가능
+- **성능 최적화**: 
+    - 카드 확장/축소 상태를 카드 위젯 내에서 자체적으로 관리하도록 리팩토링
+    - 부모 위젯(`LobbyScreen`)의 `setState` 호출을 제거하여 화면 전체가 깜빡이는(리빌드되는) 현상 해결
+    - 300ms 애니메이션 지속 시간과 `easeInOut` 커브로 부드러운 전환 제공
+
+#### 🔗 관련 파일
+- `lib/features/game/presentation/widgets/lobby_game_code_card.dart` - StatefulWidget 변환 및 애니메이션 구현
+- `lib/features/game/presentation/lobby_screen.dart` - 스크롤 감지 로직 및 상태 관리 추가
+
+---
+
 ### 🚀 기능 구현: 홈화면 아바타 클릭으로 프로필 수정 (Profile Edit from Home Avatar)
 
 #### ✅ 주요 작업 및 성과

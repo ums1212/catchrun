@@ -36,6 +36,9 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   late final AppLifecycleListener _lifecycleListener;
   bool _isExiting = false;
   StreamSubscription? _participantsSubscription;
+  
+  // 스크롤 컨트롤러 (카드에서 스크롤 감지용으로 사용)
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -158,6 +161,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _participantsSubscription?.cancel();
     _lifecycleListener.dispose();
     super.dispose();
@@ -351,6 +355,30 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
     );
   }
 
+  void _toggleCard() {
+    if (!_scrollController.hasClients) return;
+    
+    const double expandedHeight = 400.0;
+    const double collapsedHeight = 84.0;
+    const double threshold = (expandedHeight - collapsedHeight) / 2;
+    
+    if (_scrollController.offset > threshold) {
+      // 펼치기
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    } else {
+      // 접기
+      _scrollController.animateTo(
+        expandedHeight - collapsedHeight,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final gameAsync = ref.watch(gameRepositoryProvider).watchGame(widget.gameId);
@@ -401,148 +429,183 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             if (mounted) _updateAppBarWithGame(game);
           });
 
-          return Stack(
-            children: [
-              SafeArea(
+          return StreamBuilder<List<ParticipantModel>>(
+            stream: participantsAsync,
+            builder: (context, partSnapshot) {
+              final participants = partSnapshot.data ?? [];
+              final currentUser = ref.watch(userProvider).value;
+              final isHost = game.hostUid == currentUser?.uid;
+
+              return SafeArea(
                 child: Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: LobbyGameCodeCard(game: game),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: HudSectionHeader(title: '참여 목록'),
-                    ),
                     Expanded(
-                      child: StreamBuilder<List<ParticipantModel>>(
-                        stream: participantsAsync,
-                        builder: (context, partSnapshot) {
-                          final participants = partSnapshot.data ?? [];
-                          final currentUser = ref.watch(userProvider).value;
-
-                          return ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: participants.length,
-                            itemBuilder: (context, index) {
-                              final p = participants[index];
-                              final isCurrentUser = p.uid == currentUser?.uid;
-                              final isHost = p.uid == game.hostUid;
-                              final isRoomHost = game.hostUid == currentUser?.uid;
-
-                              return LobbyParticipantTile(
-                                participant: p,
-                                isCurrentUser: isCurrentUser,
-                                isHost: isHost,
-                                isRoomHost: isRoomHost,
-                                onTap: isRoomHost
-                                    ? () {
-                                        if (isCurrentUser) {
-                                          _showRoleChangeBottomSheet(context, game, p);
-                                        } else {
-                                          _showParticipantActionBottomSheet(context, game, p);
-                                        }
-                                      }
-                                    : null,
-                              );
-                            },
-                          );
+                      child: NestedScrollView(
+                        controller: _scrollController,
+                        headerSliverBuilder: (context, innerBoxIsScrolled) {
+                          return [
+                            SliverOverlapAbsorber(
+                              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+                              sliver: SliverPersistentHeader(
+                                pinned: true,
+                                delegate: LobbyGameCodeHeaderDelegate(
+                                  game: game,
+                                  expandedHeight: 350,
+                                  collapsedHeight: 44,
+                                  onToggle: _toggleCard,
+                                ),
+                              ),
+                            ),
+                          ];
                         },
-                      ),
-                    ),
-                    StreamBuilder<List<ParticipantModel>>(
-                      stream: participantsAsync,
-                      builder: (context, partSnapshot) {
-                        final participants = partSnapshot.data ?? [];
-                        final currentUser = ref.watch(userProvider).value;
-                        final isHost = game.hostUid == currentUser?.uid;
+                        body: Builder(
+                          builder: (context) {
+                            return CustomScrollView(
+                              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                              slivers: [
+                                SliverOverlapInjector(
+                                  handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+                                ),
+                                const SliverToBoxAdapter(
+                                  child: Padding(
+                                    padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+                                    child: HudSectionHeader(title: '참여 목록'),
+                                  ),
+                                ),
+                                SliverPadding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  sliver: SliverList(
+                                    delegate: SliverChildBuilderDelegate(
+                                      (context, index) {
+                                        final p = participants[index];
+                                        final isCurrentUser = p.uid == currentUser?.uid;
+                                        final isHostIdx = p.uid == game.hostUid;
+                                        final isRoomHost = game.hostUid == currentUser?.uid;
 
-                        return Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            children: [
-                              if (isHost) ...[
-                                SciFiButton(
-                                  text: '미션 개시',
-                                  height: 54,
-                                  fontSize: 18,
-                                  onPressed: () async {
-                                    final currentCops = participants.where((p) => p.role == ParticipantRole.cop).length;
-                                    if (currentCops != game.rule.copsCount) {
-                                      HudDialog.show(
-                                        context: context,
-                                        title: '인원 설정 불일치',
-                                        titleColor: Colors.orangeAccent,
-                                        contentText: '설정된 경찰(${game.rule.copsCount}명)과 현재 배정된 인원($currentCops명)이 다릅니다.\n작전 조율이 필요합니다.',
-                                          actions: [
-                                            SciFiButton(
-                                              text: '확인',
-                                              height: 45,
-                                              fontSize: 14,
-                                              onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
-                                            ),
-                                          ],
-                                      );
-                                      return;
-                                    }
-
-                                    try {
-                                      await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).startGame(game.id));
-                                    } catch (e) {
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            backgroundColor: Colors.redAccent,
-                                            content: HudText('미션 개시 실패: $e'),
-                                          ),
+                                        return LobbyParticipantTile(
+                                          participant: p,
+                                          isCurrentUser: isCurrentUser,
+                                          isHost: isHostIdx,
+                                          isRoomHost: isRoomHost,
+                                          onTap: isRoomHost
+                                              ? () {
+                                                  if (isCurrentUser) {
+                                                    _showRoleChangeBottomSheet(context, game, p);
+                                                  } else {
+                                                    _showParticipantActionBottomSheet(context, game, p);
+                                                  }
+                                                }
+                                              : null,
                                         );
-                                      }
-                                    }
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-                                GestureDetector(
-                                  onTap: () => _registerNfcKey(game),
-                                  child: Container(
-                                    width: double.infinity,
-                                    height: 50,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
-                                      color: Colors.cyanAccent.withValues(alpha: 0.05),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: const Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.nfc_rounded, color: Colors.cyanAccent, size: 20),
-                                        SizedBox(width: 8),
-                                        HudText('보안 열쇠(NFC) 등록', color: Colors.cyanAccent),
-                                      ],
+                                      },
+                                      childCount: participants.length,
                                     ),
                                   ),
                                 ),
-                              ] else ...[
-                                GlassContainer(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  child: const Center(
-                                    child: HudText(
-                                      '작전 개시 대기 중...',
-                                      color: Colors.cyanAccent,
-                                      letterSpacing: 2,
+                                if (participants.isEmpty && partSnapshot.connectionState != ConnectionState.waiting)
+                                  const SliverToBoxAdapter(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(40),
+                                      child: Center(
+                                        child: HudText('참여 중인 요원이 없습니다.', color: Colors.white38),
+                                      ),
                                     ),
                                   ),
+                                const SliverToBoxAdapter(
+                                  child: SizedBox(height: 100),
                                 ),
                               ],
-                            ],
-                          ),
-                        );
-                      },
+                            );
+                          }
+                        ),
+                      ),
+                    ),
+                    // 고정 하단 액션 섹션
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isHost) ...[
+                            SciFiButton(
+                              text: '미션 개시',
+                              height: 54,
+                              fontSize: 18,
+                              onPressed: () async {
+                                final currentCops = participants.where((p) => p.role == ParticipantRole.cop).length;
+                                if (currentCops != game.rule.copsCount) {
+                                  HudDialog.show(
+                                    context: context,
+                                    title: '인원 설정 불일치',
+                                    titleColor: Colors.orangeAccent,
+                                    contentText: '설정된 경찰(${game.rule.copsCount}명)과 현재 배정된 인원($currentCops명)이 다릅니다.\n작전 조율이 필요합니다.',
+                                    actions: [
+                                      SciFiButton(
+                                        text: '확인',
+                                        height: 45,
+                                        fontSize: 14,
+                                        onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+                                      ),
+                                    ],
+                                  );
+                                  return;
+                                }
+
+                                try {
+                                  await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).startGame(game.id));
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        backgroundColor: Colors.redAccent,
+                                        content: HudText('미션 개시 실패: $e'),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            GestureDetector(
+                              onTap: () => _registerNfcKey(game),
+                              child: Container(
+                                width: double.infinity,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
+                                  color: Colors.cyanAccent.withValues(alpha: 0.05),
+                                ),
+                                alignment: Alignment.center,
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.nfc_rounded, color: Colors.cyanAccent, size: 20),
+                                    SizedBox(width: 8),
+                                    HudText('보안 열쇠(NFC) 등록', color: Colors.cyanAccent),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ] else ...[
+                            GlassContainer(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              child: const Center(
+                                child: HudText(
+                                  '작전 개시 대기 중...',
+                                  color: Colors.cyanAccent,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              );
+            },
           );
         },
       ),
