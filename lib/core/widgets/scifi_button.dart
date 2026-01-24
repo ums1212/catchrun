@@ -22,7 +22,7 @@ class SciFiButton extends StatelessWidget {
     this.height = 60,
     this.fontSize = 18,
     this.color,
-    this.useBlur = true,
+    this.useBlur = false,
   });
 
   @override
