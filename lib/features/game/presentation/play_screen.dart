@@ -137,6 +137,12 @@ class _PlayScreenState extends ConsumerState<PlayScreen> {
           return const Center(child: CircularProgressIndicator(color: Colors.cyanAccent));
         }
         final game = gameSnapshot.data!;
+        if (game.status == GameStatus.lobby) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) context.go('/lobby/${widget.gameId}');
+          });
+          return const Center(child: CircularProgressIndicator(color: Colors.cyanAccent));
+        }
         if (game.status == GameStatus.finished) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) context.go('/result/${widget.gameId}');

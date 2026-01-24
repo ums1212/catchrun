@@ -15,6 +15,31 @@
 
 ## 2026-01-24 (토)
 
+### 🚀 기능 구현: 게임 재참여(Re-entry) 및 신규 참가 제한 시스템
+#### ✅ 주요 작업 및 성과
+- **실시간 게임 재참여 인프라 구축**
+    - `AppUser` 모델에 `activeGameId` 필드를 추가하여 사용자가 속한 세션을 영구적으로 추적하도록 개선했습니다.
+    - 앱 재실행 시 홈 화면 최상단에 **[진행 중인 게임으로 돌아가기]** 버튼이 노출되어 즉시 작전에 복귀할 수 있는 UX를 제공합니다.
+- **참여 권한 및 보안 로직 고도화**
+    - **유연한 재접속**: 이미 게임의 멤버인 경우, 게임 상태(`playing`, `lobby`)에 관계없이 코드/QR/NFC를 통한 재진입을 허용합니다.
+    - **신규 참가 차단**: 게임이 시작된 이후에는 초대 코드가 있더라도 명단에 없는 새로운 참여자의 진입을 원천 차단하여 게임의 무결성을 보호합니다.
+- **세션 생명주기 관리 최적화**
+    - `GameRepository`의 모든 참가/생성 트랜잭션에 `activeGameId` 업데이트 로직을 통합했습니다.
+    - 게임 종료 후 `ResultScreen`에서 홈으로 복귀 시 자동으로 활성 게임 정보를 삭제(`clearActiveGame`)하여 UI를 정돈합니다.
+
+#### 📝 비고 / 특이사항
+- **UX 신뢰도**: 네트워크 불안정 등으로 인한 튕김 현상 시 사용자가 느끼는 불안감을 해소하고 즉각적인 복구 수단을 제공합니다.
+- **아키텍처**: 플레이어 상태를 Firestore 사용자 문서에 기록함으로써 기기 변경이나 앱 재설치 시에도 참여 중인 게임 정보를 유지할 수 있습니다.
+
+#### 🔗 관련 파일
+- `lib/core/models/user_model.dart` - `activeGameId` 필드 추가
+- `lib/features/game/data/game_repository.dart` - 재참여 허용 및 신규 차단 트랜잭션 구현
+- `lib/features/home/home_screen.dart` - 복귀 버튼 UI 추가
+- `lib/features/game/presentation/result_screen.dart` - 게임 종료 후 상태 정리 로직 적용
+- `lib/features/game/presentation/play_screen.dart` - 상태별 리다이렉트 보강
+
+---
+
 ### 🚀 UX 개선: 프로필 이미지 적용 다각화 (Profile Image Diversification)
 
 #### ✅ 주요 작업 및 성과

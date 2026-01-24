@@ -10,6 +10,7 @@ import 'package:catchrun/core/widgets/hud_section_header.dart';
 import 'package:catchrun/features/game/presentation/widgets/result_widgets.dart';
 import 'package:catchrun/features/game/presentation/widgets/play_widgets.dart';
 import 'package:catchrun/core/widgets/hud_dialog.dart';
+import 'package:catchrun/features/auth/auth_controller.dart';
 import 'package:go_router/go_router.dart';
 
 class ResultScreen extends ConsumerWidget {
@@ -26,6 +27,10 @@ class ResultScreen extends ConsumerWidget {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
+        final currentUser = ref.read(userProvider).value;
+        if (currentUser != null) {
+          ref.read(gameRepositoryProvider).clearActiveGame(currentUser.uid);
+        }
         context.go('/home');
       },
       child: Scaffold(
@@ -54,7 +59,7 @@ class ResultScreen extends ConsumerWidget {
               );
             }
             return participantsAsync.when(
-              data: (participants) => _buildResultContent(context, game, participants),
+              data: (participants) => _buildResultContent(context, ref, game, participants),
               loading: () => const Center(
                 child: CircularProgressIndicator(color: Colors.cyanAccent),
               ),
@@ -74,7 +79,7 @@ class ResultScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildResultContent(BuildContext context, GameModel game, List<ParticipantModel> participants) {
+  Widget _buildResultContent(BuildContext context, WidgetRef ref, GameModel game, List<ParticipantModel> participants) {
     final winnerColor = game.winnerRole == ParticipantRole.cop ? Colors.blueAccent : Colors.redAccent;
     final winnerText = game.winnerRole == ParticipantRole.cop ? '경찰 승리!' : '도둑 승리!';
 
@@ -220,11 +225,17 @@ class ResultScreen extends ConsumerWidget {
 
                     const SizedBox(height: 40),
 
-                    // Action Button
                     SciFiButton(
                       text: '홈으로 돌아가기',
                       icon: Icons.home_rounded,
-                      onPressed: () => context.go('/home'),
+                      onPressed: () async {
+                        final currentUser = ref.read(userProvider).value;
+                        if (currentUser != null) {
+                          // 결과 확인 완료 후에는 진행 중인 게임 ID 초기화
+                          ref.read(gameRepositoryProvider).clearActiveGame(currentUser.uid);
+                        }
+                        if (context.mounted) context.go('/home');
+                      },
                     ),
 
                     const SizedBox(height: 40),

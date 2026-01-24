@@ -45,10 +45,12 @@ class OnboardingTextField extends StatelessWidget {
       ),
     );
 
-    if (!useBlur) return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: content,
-    );
+    if (!useBlur) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: content,
+      );
+    }
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),

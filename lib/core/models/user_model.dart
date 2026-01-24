@@ -5,6 +5,7 @@ class AppUser {
   final String email;
   final String? nickname;
   final String? avatarSeed;
+  final String? activeGameId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -13,6 +14,7 @@ class AppUser {
     required this.email,
     this.nickname,
     this.avatarSeed,
+    this.activeGameId,
     this.createdAt,
     this.updatedAt,
   });
@@ -22,6 +24,7 @@ class AppUser {
     String? email,
     String? nickname,
     String? avatarSeed,
+    String? activeGameId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -30,6 +33,7 @@ class AppUser {
       email: email ?? this.email,
       nickname: nickname ?? this.nickname,
       avatarSeed: avatarSeed ?? this.avatarSeed,
+      activeGameId: activeGameId ?? this.activeGameId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -41,6 +45,7 @@ class AppUser {
       'email': email,
       'nickname': nickname,
       'avatarSeed': avatarSeed,
+      'activeGameId': activeGameId,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
@@ -52,6 +57,7 @@ class AppUser {
       email: map['email'] ?? '',
       nickname: map['nickname'],
       avatarSeed: map['avatarSeed'],
+      activeGameId: map['activeGameId'],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate(),
     );

@@ -40,10 +40,12 @@ class GlassContainer extends StatelessWidget {
       child: child,
     );
 
-    if (!useBlur) return ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
-      child: content,
-    );
+    if (!useBlur) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: content,
+      );
+    }
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),

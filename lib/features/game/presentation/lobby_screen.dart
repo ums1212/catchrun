@@ -613,14 +613,12 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   }
 
   void _showParticipantActionBottomSheet(BuildContext context, GameModel game, ParticipantModel p) {
-    // TODO: 전역 성능 설정에 따라 useBlur 적용 가능
-    const bool useBlur = true; 
 
     Widget sheetContent = Container(
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: useBlur ? 0.8 : 0.95),
+        color: Colors.black.withValues(alpha: 0.8),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border.all(color: Colors.white.withValues(alpha: useBlur ? 0.1 : 0.2)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: SafeArea(
         child: Column(
@@ -664,7 +662,6 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        if (!useBlur) return sheetContent;
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: sheetContent,
@@ -702,14 +699,12 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   }
 
   void _showRoleChangeBottomSheet(BuildContext context, GameModel game, ParticipantModel p) {
-    // TODO: 전역 성능 설정에 따라 useBlur 적용 가능
-    const bool useBlur = true;
 
     Widget sheetContent = Container(
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: useBlur ? 0.8 : 0.95),
+        color: Colors.black.withValues(alpha: 0.8),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border.all(color: Colors.white.withValues(alpha: useBlur ? 0.1 : 0.2)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: SafeArea(
         child: Column(
@@ -783,7 +778,6 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        if (!useBlur) return sheetContent;
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: sheetContent,

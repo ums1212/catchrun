@@ -124,7 +124,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                     },
                   ),
                 ),
-                const SizedBox(height: 60),
+                const SizedBox(height: 32),
+                // 진행 중인 게임이 있는 경우 복귀 버튼 표시
+                if (user?.activeGameId != null) ...[
+                  SciFiButton(
+                    text: '진행 중인 게임으로 돌아가기',
+                    onPressed: () => context.push('/play/${user!.activeGameId}'),
+                    icon: Icons.play_arrow_rounded,
+                    color: Colors.orangeAccent,
+                    height: 60,
+                  ),
+                  const SizedBox(height: 48),
+                ],
+                const SizedBox(height: 12),
                 // Action Buttons
                 SciFiButton(
                   text: '게임 만들기',

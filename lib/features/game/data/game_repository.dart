@@ -83,6 +83,11 @@ class GameRepository {
         _firestore.collection('games').doc(gameId).collection('participants').doc(host.uid),
         hostParticipant.toMap(),
       );
+
+      // 4. 사용자 프로필에 현재 게임 ID 저장
+      transaction.update(_firestore.collection('users').doc(host.uid), {
+        'activeGameId': gameId,
+      });
     });
 
     return gameId;
@@ -113,20 +118,25 @@ class GameRepository {
         throw Exception('초대 코드가 일치하지 않습니다.');
       }
 
-      if (gameData['status'] != 'lobby') {
-        throw Exception('이미 시작되었거나 종료된 게임입니다.');
-      }
-
       final participantRef = _firestore
           .collection('games')
           .doc(gameId)
           .collection('participants')
           .doc(user.uid);
-      
+
       final participantDoc = await transaction.get(participantRef);
+      
       if (participantDoc.exists) {
-        // 이미 참가 중이면 성공으로 간주하고 중단
+        // 이미 참가 중인 유저는 재진입 허용 (사용자 프로필 업데이트 확인)
+        transaction.update(_firestore.collection('users').doc(user.uid), {
+          'activeGameId': gameId,
+        });
         return;
+      }
+
+      // 2.2 신규 참가자인 경우 게임 상태 체크
+      if (gameData['status'] != 'lobby') {
+        throw Exception('이미 시작되었거나 종료된 게임입니다. 게임 중에는 새로 참가할 수 없습니다.');
       }
 
       // 참가자 추가
@@ -157,6 +167,11 @@ class GameRepository {
           'message': '${user.nickname ?? '익명'}님이 입장했습니다.',
         },
       });
+
+      // 사용자 프로필에 현재 게임 ID 저장
+      transaction.update(_firestore.collection('users').doc(user.uid), {
+        'activeGameId': gameId,
+      });
     });
 
     return gameId;
@@ -178,18 +193,25 @@ class GameRepository {
         throw Exception('유효하지 않은 QR 코드입니다.');
       }
 
-      if (gameData['status'] != 'lobby') {
-        throw Exception('이미 시작되었거나 종료된 게임입니다.');
-      }
-
       final participantRef = _firestore
           .collection('games')
           .doc(gameId)
           .collection('participants')
           .doc(user.uid);
-      
+
       final participantDoc = await transaction.get(participantRef);
-      if (participantDoc.exists) return;
+      if (participantDoc.exists) {
+        // 이미 참가 중인 유저는 재진입 허용
+        transaction.update(_firestore.collection('users').doc(user.uid), {
+          'activeGameId': gameId,
+        });
+        return;
+      }
+
+      // 신규 참가자 제한
+      if (gameData['status'] != 'lobby') {
+        throw Exception('이미 시작되었거나 종료된 게임입니다. 게임 중에는 새로 참가할 수 없습니다.');
+      }
 
       final participant = ParticipantModel(
         uid: user.uid,
@@ -215,6 +237,11 @@ class GameRepository {
           'nickname': user.nickname ?? '익명',
           'message': '${user.nickname ?? '익명'}님이 입장했습니다.',
         },
+      });
+
+      // 사용자 프로필에 현재 게임 ID 저장
+      transaction.update(_firestore.collection('users').doc(user.uid), {
+        'activeGameId': gameId,
       });
     });
 
@@ -237,10 +264,6 @@ class GameRepository {
         throw Exception('유효하지 않은 보안 열쇠입니다.');
       }
 
-      if (gameData['status'] != 'lobby') {
-        throw Exception('이미 시작되었거나 종료된 게임입니다.');
-      }
-
       final participantRef = _firestore
           .collection('games')
           .doc(gameId)
@@ -248,7 +271,19 @@ class GameRepository {
           .doc(user.uid);
       
       final participantDoc = await transaction.get(participantRef);
-      if (participantDoc.exists) return;
+      
+      if (participantDoc.exists) {
+        // 이미 참가 중인 유저는 재진입 허용
+        transaction.update(_firestore.collection('users').doc(user.uid), {
+          'activeGameId': gameId,
+        });
+        return;
+      }
+
+      // 신규 참가자 제한
+      if (gameData['status'] != 'lobby') {
+        throw Exception('이미 시작되었거나 종료된 게임입니다. 게임 중에는 새로 참가할 수 없습니다.');
+      }
 
       final participant = ParticipantModel(
         uid: user.uid,
@@ -274,6 +309,11 @@ class GameRepository {
           'nickname': user.nickname ?? '익명',
           'message': '${user.nickname ?? '익명'}님이 입장했습니다.',
         },
+      });
+
+      // 사용자 프로필에 현재 게임 ID 저장
+      transaction.update(_firestore.collection('users').doc(user.uid), {
+        'activeGameId': gameId,
       });
     });
 
@@ -520,6 +560,11 @@ class GameRepository {
           transaction.delete(_firestore.collection('gameCodes').doc(gameCode));
         }
       }
+
+      // 4. 사용자 프로필에서 게임 ID 제거
+      transaction.update(_firestore.collection('users').doc(uid), {
+        'activeGameId': null,
+      });
     });
   }
 
@@ -919,5 +964,16 @@ class GameRepository {
   /// offset을 적용하여 현재 추정 서버 시간을 반환합니다.
   DateTime getEstimatedServerTime(Duration offset) {
     return DateTime.now().add(offset);
+  }
+
+  /// 진행 중인 게임 정보를 유저 프로필에서 제거
+  Future<void> clearActiveGame(String uid) async {
+    try {
+      await _firestore.collection('users').doc(uid).update({
+        'activeGameId': null,
+      });
+    } catch (e) {
+      // 오류 무시 (이미 유저가 삭제되었거나 연결 오류 등)
+    }
   }
 }
