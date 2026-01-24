@@ -140,15 +140,16 @@ class _EventPopupOverlayState extends State<EventPopupOverlay> with SingleTicker
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(icon, color: Colors.white, size: 64),
+                        _buildEventVisual(type, payload, icon),
                         const SizedBox(height: 16),
                         Text(
                           message,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
                           ),
                         ),
                       ],
@@ -159,6 +160,53 @@ class _EventPopupOverlayState extends State<EventPopupOverlay> with SingleTicker
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildEventVisual(String? type, Map<String, dynamic>? payload, IconData defaultIcon) {
+    final actorSeed = payload?['actorAvatarSeed'] as String?;
+    final targetSeed = payload?['targetAvatarSeed'] as String?;
+
+    if (actorSeed == null && targetSeed == null) {
+      return Icon(defaultIcon, color: Colors.white, size: 64);
+    }
+
+    if (targetSeed != null && (type == 'CAUGHT' || type == 'RESCUED')) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _avatarCircle(actorSeed!, size: 64),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            child: Icon(Icons.bolt_rounded, color: Colors.white, size: 24),
+          ),
+          _avatarCircle(targetSeed, size: 64),
+        ],
+      );
+    }
+
+    return _avatarCircle(actorSeed ?? targetSeed!, size: 64);
+  }
+
+  Widget _avatarCircle(String seed, {double size = 64}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size / 2),
+        child: Image.asset(
+          'assets/image/profile$seed.png',
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.white54),
+        ),
       ),
     );
   }

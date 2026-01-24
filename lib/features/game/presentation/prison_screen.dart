@@ -308,7 +308,46 @@ class _PrisonScreenState extends ConsumerState<PrisonScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Icon(Icons.lock_person_rounded, size: 100, color: Colors.redAccent, shadows: [Shadow(color: Colors.redAccent, blurRadius: 20)]),
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.redAccent, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.redAccent.withValues(alpha: 0.5),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(60),
+                          child: Image.asset(
+                            'assets/image/profile${myParticipant.avatarSeedSnapshot ?? '1'}.png',
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, size: 60, color: Colors.white24),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: Colors.black,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.lock_rounded, color: Colors.redAccent, size: 24),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 24),
                   const HudText('수감 상태 활성', fontSize: 32, color: Colors.redAccent, letterSpacing: 2),
                   const SizedBox(height: 16),

@@ -6,12 +6,14 @@ import 'package:catchrun/core/models/participant_model.dart';
 class ResultTitleCard extends StatelessWidget {
   final String title;
   final String name;
+  final String? avatarSeed;
   final Color titleColor;
 
   const ResultTitleCard({
     super.key,
     required this.title,
     required this.name,
+    this.avatarSeed,
     required this.titleColor,
   });
 
@@ -23,7 +25,24 @@ class ResultTitleCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           HudText(title, fontSize: 12, color: titleColor),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: titleColor.withValues(alpha: 0.5), width: 1.5),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(25),
+              child: Image.asset(
+                'assets/image/profile${avatarSeed ?? '1'}.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, color: Colors.white24),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           HudText(name, fontSize: 14, color: Colors.white),
         ],
       ),
@@ -69,6 +88,27 @@ class ResultRankingItem extends StatelessWidget {
               '$rank',
               fontSize: 16,
               color: rank <= 3 ? rankColor : Colors.white54,
+            ),
+          ),
+          const SizedBox(width: 12),
+          // 프로필 이미지 추가
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isCop ? Colors.blueAccent.withValues(alpha: 0.3) : Colors.redAccent.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: Image.asset(
+                'assets/image/profile${participant.avatarSeedSnapshot ?? '1'}.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, color: Colors.white24, size: 20),
+              ),
             ),
           ),
           const SizedBox(width: 16),

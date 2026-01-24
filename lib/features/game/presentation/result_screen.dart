@@ -185,10 +185,10 @@ class ResultScreen extends ConsumerWidget {
                       spacing: 12,
                       runSpacing: 12,
                       children: [
-                        if (mvp != null) ResultTitleCard(title: '⭐ MVP', name: mvp.nicknameSnapshot, titleColor: winnerColor),
-                        if (mostCatches != null) ResultTitleCard(title: '🏅 검거왕', name: mostCatches.nicknameSnapshot, titleColor: Colors.blueAccent),
-                        if (mostRescues != null) ResultTitleCard(title: '🗝 구출왕', name: mostRescues.nicknameSnapshot, titleColor: Colors.orangeAccent),
-                        if (longestSurvival != null) ResultTitleCard(title: '⏱ 불사조', name: longestSurvival.nicknameSnapshot, titleColor: Colors.greenAccent),
+                        if (mvp != null) ResultTitleCard(title: '⭐ MVP', name: mvp.nicknameSnapshot, avatarSeed: mvp.avatarSeedSnapshot, titleColor: winnerColor),
+                        if (mostCatches != null) ResultTitleCard(title: '🏅 검거왕', name: mostCatches.nicknameSnapshot, avatarSeed: mostCatches.avatarSeedSnapshot, titleColor: Colors.blueAccent),
+                        if (mostRescues != null) ResultTitleCard(title: '🗝 구출왕', name: mostRescues.nicknameSnapshot, avatarSeed: mostRescues.avatarSeedSnapshot, titleColor: Colors.orangeAccent),
+                        if (longestSurvival != null) ResultTitleCard(title: '⏱ 불사조', name: longestSurvival.nicknameSnapshot, avatarSeed: longestSurvival.avatarSeedSnapshot, titleColor: Colors.greenAccent),
                       ],
                     ),
 

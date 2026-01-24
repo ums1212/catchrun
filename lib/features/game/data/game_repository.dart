@@ -635,6 +635,8 @@ class GameRepository {
         'payload': {
           'actorNickname': copNickname,
           'targetNickname': robberNickname,
+          'actorAvatarSeed': (copDoc.data())?['avatarSeedSnapshot'],
+          'targetAvatarSeed': (robberDoc.data())?['avatarSeedSnapshot'],
           'message': '경찰 $copNickname님이 도둑 $robberNickname님을 체포했습니다!',
         },
       });
@@ -726,6 +728,8 @@ class GameRepository {
         'payload': {
           'actorNickname': rescuerNickname,
           'targetNickname': jailedNickname,
+          'actorAvatarSeed': (rescuerDoc.data())?['avatarSeedSnapshot'],
+          'targetAvatarSeed': (jailedDoc.data())?['avatarSeedSnapshot'],
           'message': '도둑 $rescuerNickname님이 $jailedNickname님을 구출했습니다!',
         },
       });
@@ -794,6 +798,7 @@ class GameRepository {
         'audience': 'all',
         'payload': {
           'actorNickname': nickname,
+          'actorAvatarSeed': (participantDoc.data())?['avatarSeedSnapshot'],
           'message': '열쇠 사용됨! 도둑 $nickname님이 탈출했습니다!',
           'durationMs': 3000,
         },

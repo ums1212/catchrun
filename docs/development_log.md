@@ -15,6 +15,33 @@
 
 ## 2026-01-24 (토)
 
+### 🚀 UX 개선: 프로필 이미지 적용 다각화 (Profile Image Diversification)
+
+#### ✅ 주요 작업 및 성과
+- **게임 전반에 걸친 사용자 프로필 이미지 노출 확대**
+    - 홈 화면에만 국한되었던 프로필 아바타를 게임의 주요 접점에 배치하여 개인화된 경험과 몰입도를 개선했습니다.
+- **화면별 세부 적용 내용**
+    - **대기실(Lobby)**: 참여자 리스트 타일(`LobbyParticipantTile`)의 역할 에모지를 실제 프로필 이미지로 교체. 역할 구분을 위한 테두리 색상은 유지.
+    - **구금(Prison)**: 수감 상태 화면 중앙에 본인의 프로필 이미지를 크게 배치하고, 레드 네온 테두리와 자물쇠 아이콘을 결합하여 '수감 상태'를 시각적으로 명확히 전달.
+    - **결과(Result)**: 최종 순위표(`ResultRankingItem`) 및 MVP, 검거왕 등 특별 칭호 카드(`ResultTitleCard`)에 해당 유저의 아바타를 노출하여 보상감 및 식별성 강화.
+    - **이벤트 알림(Event)**: 게임 중 발생하는 검거, 구출, 열쇠 사용 팝업(`EventPopupOverlay`)에 관련 유저의 아바타를 노출. 누가 누구를 체포/구출했는지 직관적으로 인지 가능하도록 구현.
+- **데이터 흐름 최적화**
+    - `GameRepository`의 실시간 이벤트 페이로드에 아바타 시드(`actorAvatarSeed`, `targetAvatarSeed`) 정보를 포함시켜 별도의 추가 쿼리 없이 실시간 알림창에서 즉시 이미지를 표시하도록 최적화.
+
+#### 📝 비고 / 특이사항
+- **시각적 일관성**: 모든 아바타 노출 영역에 기존의 글래스모피즘 HUD 스타일과 네온 액센트를 동일하게 적용하여 디자인 정체성 유지.
+- **안정성**: 아바타 이미지를 불러올 수 없는 경우를 대비한 폴백(Fallback) 아이콘 로직을 전 화면에 적용.
+
+#### 🔗 관련 파일
+- `lib/features/game/presentation/widgets/lobby_participant_tile.dart`
+- `lib/features/game/presentation/prison_screen.dart`
+- `lib/features/game/presentation/widgets/result_widgets.dart`
+- `lib/features/game/presentation/result_screen.dart`
+- `lib/features/game/data/game_repository.dart`
+- `lib/features/game/presentation/widgets/event_popup_overlay.dart`
+
+---
+
 ### 🚀 기능 구현: 안드로이드 즉시 업데이트 기능 (In-App Update: Immediate)
 
 #### ✅ 주요 작업 및 성과

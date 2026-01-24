@@ -58,9 +58,18 @@ class LobbyParticipantTile extends StatelessWidget {
                   ],
                 ),
                 alignment: Alignment.center,
-                child: Text(
-                  isCop ? '👮' : '🏃',
-                  style: const TextStyle(fontSize: 20),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(22),
+                  child: Image.asset(
+                    'assets/image/profile${participant.avatarSeedSnapshot ?? '1'}.png',
+                    width: 44,
+                    height: 44,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Text(
+                      isCop ? '👮' : '🏃',
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                  ),
                 ),
               ),
               title: Row(
