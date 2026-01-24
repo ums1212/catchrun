@@ -13,7 +13,33 @@
 
 ---
 
-## 2026-01-23 (목)
+## 2026-01-24 (토)
+
+### 🚀 기능 구현: 안드로이드 즉시 업데이트 기능 (In-App Update: Immediate)
+
+#### ✅ 주요 작업 및 성과
+- **안드로이드 Play Store In-App Update 통합**
+    - `in_app_update` v4.2.5 패키지를 사용하여 네이티브 `AppUpdateManager` 연동
+    - **즉시 업데이트(Immediate Update) 모드**: 필수 업데이트가 있을 경우 사용자의 앱 진입을 차단하고 업데이트를 강제하는 신뢰성 있는 업데이트 체계 구축
+- **전역 업데이트 관리 시스템(`UpdateService`) 구현**
+    - 싱글톤 패턴의 `UpdateService`를 통해 앱 전역에서 일관된 업데이트 로직 관리
+    - 안드로이드 플랫폼 전용 예외 처리 및 로그 시스템 통합
+- **앱 시작 프로세스 연동**
+    - `main.dart`의 초기화 루틴에 업데이트 체크 로직을 삽입하여 앱 구동 시 가장 먼저 업데이트 여부를 확인하도록 구현
+    - 비차단(Non-blocking) 비동기 호출로 업데이트가 없는 경우 앱 시작 속도에 영향을 주지 않도록 최적화
+
+#### 📝 비고 / 특이사항
+- **테스트 환경**: 현재 비공개 테스트 트랙에 등록된 상태에서 정상 작동 확인 가능 (Play Store 연동 필요)
+- **보안/안정성**: `immediateUpdateAllowed` 확인을 통해 시스템이 허용하는 안전한 상황에서만 업데이트 팝업 노출
+
+#### 🔗 관련 파일
+- `lib/core/services/update_service.dart` - 업데이트 관리 로직
+- `lib/main.dart` - 앱 시작 시 호출부 추가
+- `pubspec.yaml` - `in_app_update: ^4.2.5` 추가
+
+---
+
+## 2026-01-23 (금)
 
 ### 🚀 UX 개선: 로비 화면 반응형 스크롤 UI 구현 (Lobby Collapsible Game Code Card)
 

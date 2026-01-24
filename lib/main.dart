@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:catchrun/core/services/update_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +43,10 @@ void main() async {
     'apiBaseUrl': dotenv.env['API_BASE_URL'] ?? '',
     'environment': dotenv.env['ENVIRONMENT'] ?? 'development',
   });
+
+  // Check for Android In-App Update
+  // Non-blocking call to not delay app startup, but InAppUpdate will show its own UI
+  UpdateService.instance.checkForUpdate();
 
   runApp(
     const ProviderScope(
