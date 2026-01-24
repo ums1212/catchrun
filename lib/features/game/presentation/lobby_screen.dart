@@ -613,55 +613,61 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   }
 
   void _showParticipantActionBottomSheet(BuildContext context, GameModel game, ParticipantModel p) {
+    // TODO: 전역 성능 설정에 따라 useBlur 적용 가능
+    const bool useBlur = true; 
+
+    Widget sheetContent = Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: useBlur ? 0.8 : 0.95),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(color: Colors.white.withValues(alpha: useBlur ? 0.1 : 0.2)),
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+             const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            HudText('${p.nicknameSnapshot} 관리', fontSize: 18, color: Colors.cyanAccent),
+            const SizedBox(height: 24),
+            ListTile(
+              leading: const Icon(Icons.person_pin_rounded, color: Colors.cyanAccent),
+              title: const HudText('역할 설정'),
+              onTap: () {
+                Navigator.pop(context);
+                _showRoleChangeBottomSheet(context, game, p);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_remove_rounded, color: Colors.redAccent),
+              title: const HudText('강퇴하기', color: Colors.redAccent),
+              onTap: () {
+                Navigator.pop(context);
+                _showKickConfirmationDialog(context, game, p);
+              },
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
+        if (!useBlur) return sheetContent;
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.8),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            ),
-            child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                   const SizedBox(height: 12),
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  HudText('${p.nicknameSnapshot} 관리', fontSize: 18, color: Colors.cyanAccent),
-                  const SizedBox(height: 24),
-                  ListTile(
-                    leading: const Icon(Icons.person_pin_rounded, color: Colors.cyanAccent),
-                    title: const HudText('역할 설정'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showRoleChangeBottomSheet(context, game, p);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.person_remove_rounded, color: Colors.redAccent),
-                    title: const HudText('강퇴하기', color: Colors.redAccent),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showKickConfirmationDialog(context, game, p);
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ),
+          child: sheetContent,
         );
       },
     );
@@ -696,85 +702,91 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   }
 
   void _showRoleChangeBottomSheet(BuildContext context, GameModel game, ParticipantModel p) {
+    // TODO: 전역 성능 설정에 따라 useBlur 적용 가능
+    const bool useBlur = true;
+
+    Widget sheetContent = Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: useBlur ? 0.8 : 0.95),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(color: Colors.white.withValues(alpha: useBlur ? 0.1 : 0.2)),
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            HudText('${p.nicknameSnapshot} 역할 변경', fontSize: 18, color: Colors.cyanAccent),
+            const SizedBox(height: 8),
+            const HudText('역할을 변경합니다.', fontSize: 12, fontWeight: FontWeight.normal, color: Colors.white54),
+            const SizedBox(height: 24),
+            ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.blueAccent),
+                  color: Colors.blueAccent.withValues(alpha: 0.1),
+                ),
+                alignment: Alignment.center,
+                child: const Text('👮', style: TextStyle(fontSize: 20)),
+              ),
+              title: const HudText('TACTICAL UNIT (경찰)'),
+              onTap: () async {
+                await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).updateParticipantRole(
+                  gameId: game.id,
+                  uid: p.uid,
+                  role: ParticipantRole.cop,
+                ));
+                if (context.mounted) Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.redAccent),
+                  color: Colors.redAccent.withValues(alpha: 0.1),
+                ),
+                alignment: Alignment.center,
+                child: const Text('🏃', style: TextStyle(fontSize: 20)),
+              ),
+              title: const HudText('TARGET VESSEL (도둑)'),
+              onTap: () async {
+                await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).updateParticipantRole(
+                  gameId: game.id,
+                  uid: p.uid,
+                  role: ParticipantRole.robber,
+                ));
+                if (context.mounted) Navigator.pop(context);
+              },
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
+        if (!useBlur) return sheetContent;
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.8),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            ),
-            child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  HudText('${p.nicknameSnapshot} 역할 변경', fontSize: 18, color: Colors.cyanAccent),
-                  const SizedBox(height: 8),
-                  const HudText('역할을 변경합니다.', fontSize: 12, fontWeight: FontWeight.normal, color: Colors.white54),
-                  const SizedBox(height: 24),
-                  ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.blueAccent),
-                        color: Colors.blueAccent.withValues(alpha: 0.1),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Text('👮', style: TextStyle(fontSize: 20)),
-                    ),
-                    title: const HudText('TACTICAL UNIT (경찰)'),
-                    onTap: () async {
-                      await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).updateParticipantRole(
-                        gameId: game.id,
-                        uid: p.uid,
-                        role: ParticipantRole.cop,
-                      ));
-                      if (context.mounted) Navigator.pop(context);
-                    },
-                  ),
-                  ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.redAccent),
-                        color: Colors.redAccent.withValues(alpha: 0.1),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Text('🏃', style: TextStyle(fontSize: 20)),
-                    ),
-                    title: const HudText('TARGET VESSEL (도둑)'),
-                    onTap: () async {
-                      await NetworkErrorHandler.wrap(() => ref.read(gameRepositoryProvider).updateParticipantRole(
-                        gameId: game.id,
-                        uid: p.uid,
-                        role: ParticipantRole.robber,
-                      ));
-                      if (context.mounted) Navigator.pop(context);
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ),
+          child: sheetContent,
         );
       },
     );

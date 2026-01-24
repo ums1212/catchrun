@@ -43,6 +43,7 @@ class MainShellWrapper extends ConsumerWidget {
                 centerTitle: appBarConfig.centerTitle,
                 backgroundColor: appBarConfig.backgroundColor,
                 elevation: appBarConfig.elevation,
+                scrolledUnderElevation: 0, // 스크롤 시 색상 변화 방지
                 actions: appBarConfig.actions,
                 bottom: appBarConfig.bottom,
                 iconTheme: appBarConfig.iconTheme ?? const IconThemeData(color: Colors.cyanAccent),

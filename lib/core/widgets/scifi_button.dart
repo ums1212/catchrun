@@ -11,6 +11,7 @@ class SciFiButton extends StatelessWidget {
   final double height;
   final double fontSize;
   final Color? color;
+  final bool useBlur;
 
   const SciFiButton({
     super.key,
@@ -21,12 +22,52 @@ class SciFiButton extends StatelessWidget {
     this.height = 60,
     this.fontSize = 18,
     this.color,
+    this.useBlur = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final themeColor = color ?? Colors.blueAccent;
     final secondaryColor = Colors.redAccent;
+
+    Widget buttonContent = Stack(
+      alignment: Alignment.center,
+      children: [
+        if (!isOutlined)
+          Positioned(
+            top: 2,
+            left: 10,
+            right: 10,
+            child: Container(
+              height: 1,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.0),
+                    Colors.white.withValues(alpha: 0.3),
+                    Colors.white.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: Colors.white, size: fontSize + 4),
+              const SizedBox(width: 12),
+            ],
+            HudText(
+              text,
+              fontSize: fontSize,
+              letterSpacing: 2,
+              color: Colors.white,
+            ),
+          ],
+        ),
+      ],
+    );
 
     return GestureDetector(
       onTap: onPressed,
@@ -40,7 +81,9 @@ class SciFiButton extends StatelessWidget {
               : LinearGradient(
                   colors: [themeColor, secondaryColor],
                 ),
-          color: isOutlined ? Colors.black.withValues(alpha: 0.4) : null,
+          color: isOutlined 
+              ? Colors.black.withValues(alpha: useBlur ? 0.4 : 0.6) 
+              : null,
           border: isOutlined
               ? GradientBorder(
                   width: 1.5,
@@ -67,47 +110,12 @@ class SciFiButton extends StatelessWidget {
         alignment: Alignment.center,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (!isOutlined)
-                  Positioned(
-                    top: 2,
-                    left: 10,
-                    right: 10,
-                    child: Container(
-                      height: 1,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.white.withValues(alpha: 0.0),
-                            Colors.white.withValues(alpha: 0.3),
-                            Colors.white.withValues(alpha: 0.0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (icon != null) ...[
-                      Icon(icon, color: Colors.white, size: fontSize + 4),
-                      const SizedBox(width: 12),
-                    ],
-                    HudText(
-                      text,
-                      fontSize: fontSize,
-                      letterSpacing: 2,
-                      color: Colors.white,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          child: useBlur 
+            ? BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                child: buttonContent,
+              )
+            : buttonContent,
         ),
       ),
     );

@@ -10,6 +10,7 @@ class HudTextField extends StatelessWidget {
   final String? Function(String?)? validator;
   final TextInputType? keyboardType;
   final bool obscureText;
+  final bool useBlur;
 
   const HudTextField({
     super.key,
@@ -19,10 +20,37 @@ class HudTextField extends StatelessWidget {
     this.validator,
     this.keyboardType,
     this.obscureText = false,
+    this.useBlur = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    Widget content = Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: useBlur ? 0.4 : 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: const GradientBorder(
+          width: 1.5,
+          gradient: LinearGradient(
+            colors: [Colors.blueAccent, Colors.redAccent],
+          ),
+        ),
+      ),
+      child: TextFormField(
+        controller: controller,
+        style: const TextStyle(color: Colors.white, letterSpacing: 1.2),
+        validator: validator,
+        keyboardType: keyboardType,
+        obscureText: obscureText,
+        decoration: InputDecoration(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          border: InputBorder.none,
+          hintText: hintText,
+          hintStyle: const TextStyle(color: Colors.white24),
+        ),
+      ),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -30,34 +58,12 @@ class HudTextField extends StatelessWidget {
         const SizedBox(height: 8),
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(12),
-                border: const GradientBorder(
-                  width: 1.5,
-                  gradient: LinearGradient(
-                    colors: [Colors.blueAccent, Colors.redAccent],
-                  ),
-                ),
-              ),
-              child: TextFormField(
-                controller: controller,
-                style: const TextStyle(color: Colors.white, letterSpacing: 1.2),
-                validator: validator,
-                keyboardType: keyboardType,
-                obscureText: obscureText,
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  border: InputBorder.none,
-                  hintText: hintText,
-                  hintStyle: const TextStyle(color: Colors.white24),
-                ),
-              ),
-            ),
-          ),
+          child: useBlur
+              ? BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                  child: content,
+                )
+              : content,
         ),
       ],
     );

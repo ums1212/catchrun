@@ -6,16 +6,41 @@ class HomeProfileCard extends StatelessWidget {
   final String nickname;
   final String? avatarSeed;
   final VoidCallback? onTap;
+  final bool useBlur;
 
   const HomeProfileCard({
     super.key,
     required this.nickname,
     this.avatarSeed,
     this.onTap,
+    this.useBlur = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    Widget avatarContent = Container(
+      width: 100,
+      height: 100,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: useBlur ? 0.1 : 0.2),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: useBlur ? 0.2 : 0.3),
+          width: 1.5,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Image.asset(
+        'assets/image/profile${avatarSeed ?? '1'}.png',
+        width: 100,
+        height: 100,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return const Text('👤', style: TextStyle(fontSize: 40));
+        },
+      ),
+    );
+
     return Column(
       children: [
         GestureDetector(
@@ -43,34 +68,19 @@ class HomeProfileCard extends StatelessWidget {
                 ),
               ),
               // Glass Panel Avatar
-              ClipRRect(
-                borderRadius: BorderRadius.circular(60),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.1),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        width: 1.5,
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Image.asset(
-                      'assets/image/profile${avatarSeed ?? '1'}.png',
-                      width: 100,
-                      height: 100,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Text('👤', style: TextStyle(fontSize: 40));
-                      },
-                    ),
+              if (!useBlur)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(60),
+                  child: avatarContent,
+                )
+              else
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(60),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: avatarContent,
                   ),
                 ),
-              ),
               // Edit indicator
               if (onTap != null)
                 Positioned(

@@ -41,6 +41,7 @@ class ResultScreen extends ConsumerWidget {
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
+          scrolledUnderElevation: 0, // 스크롤 시 색상 변화 방지
           iconTheme: const IconThemeData(color: Colors.cyanAccent),
           // 뒤로가기 버튼이 자동으로 생기지 않도록 설정 (이미 팝스코프로 제어 중이므로)
           automaticallyImplyLeading: false,
